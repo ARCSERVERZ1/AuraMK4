@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AURA MK4 Room Control</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080c12;
+      --surface: #101721;
+      --surface-2: #151f2b;
+      --surface-3: #0d131d;
+      --line: rgba(255, 255, 255, 0.1);
+      --text: #eef5f8;
+      --muted: #91a2b3;
+      --blue: #18a8ff;
+      --blue-soft: rgba(24, 168, 255, 0.16);
+      --red: #ff667d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(24, 168, 255, 0.13), transparent 30rem),
+        radial-gradient(circle at top right, rgba(61, 110, 255, 0.1), transparent 28rem),
+        var(--bg);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app { width: min(1320px, 100%); margin: 0 auto; padding: 18px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 8px;
+      color: #06101a;
+      background: linear-gradient(135deg, var(--blue), #8bd8ff);
+      font-weight: 900;
+    }
+
+    .eyebrow { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0; }
+    h1, h2, h3, p { margin: 0; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid rgba(24, 168, 255, 0.28);
+      border-radius: 8px;
+      background: rgba(24, 168, 255, 0.08);
+      color: #c9ecff;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .home-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .house-select { width: 210px; height: 38px; color: #dcebf5; background-color: rgba(13, 19, 29, 0.82); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+    .panel { border: 1px solid var(--line); border-radius: 8px; background: rgba(16, 23, 33, 0.92); box-shadow: 0 18px 70px rgba(0, 0, 0, 0.22); }
+    .rooms-wrap { padding: 14px 14px 12px; margin-bottom: 14px; background: linear-gradient(135deg, rgba(24, 168, 255, 0.08), rgba(255, 255, 255, 0.02)), rgba(16, 23, 33, 0.92); }
+    .rooms-head, .devices-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 10px; }
+    .rooms-head p, .devices-head p { color: var(--muted); margin-top: 4px; font-size: 13px; }
+    .room-carousel { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 10px; align-items: center; }
+
+    .carousel-btn {
+      width: 36px;
+      height: 56px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #c9ecff;
+      font-size: 18px;
+      transition: 160ms ease;
+    }
+
+    .carousel-btn:hover { border-color: rgba(24, 168, 255, 0.55); background: rgba(24, 168, 255, 0.12); }
+    .room-track { display: flex; gap: 10px; overflow-x: auto; scroll-behavior: smooth; padding: 2px 2px 8px; scrollbar-width: thin; }
+
+    .room-card {
+      position: relative;
+      flex: 0 0 168px;
+      min-height: 76px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)), var(--surface-3);
+      color: var(--text);
+      padding: 12px 12px 12px 46px;
+      transition: 180ms ease;
+      cursor: pointer;
+    }
+
+    .room-card:hover, .room-card.active {
+      border-color: rgba(24, 168, 255, 0.82);
+      background: linear-gradient(135deg, rgba(24, 168, 255, 0.18), rgba(61, 110, 255, 0.08)), var(--surface-3);
+    }
+
+    .room-card.active::after { content: ""; position: absolute; left: 46px; right: 12px; bottom: 0; height: 2px; background: var(--blue); box-shadow: 0 0 12px var(--blue); }
+
+    .room-symbol {
+      position: absolute; left: 12px; top: 14px; display: grid; place-items: center; width: 24px; height: 24px;
+      border-radius: 7px; color: var(--blue); background: rgba(24, 168, 255, 0.12); border: 1px solid rgba(24, 168, 255, 0.25);
+      font-size: 13px; font-weight: 900;
+    }
+
+    .room-card strong { display: block; font-size: 14px; margin-bottom: 4px; }
+    .room-card span { display: block; color: var(--muted); font-size: 12px; }
+    .devices-section { padding: 16px; }
+    .add-device-btn { min-width: 104px; height: 36px; border: 0; border-radius: 8px; background: var(--blue); color: #03111c; font-size: 13px; font-weight: 800; }
+    .cancel-btn { height: 36px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.06); color: var(--text); font-size: 13px; }
+    .add-device-panel { display: none; margin-bottom: 14px; padding: 14px; border: 1px solid rgba(24, 168, 255, 0.25); border-radius: 8px; background: rgba(24, 168, 255, 0.06); }
+    .add-device-panel.open { display: block; }
+    .add-device-grid { display: grid; grid-template-columns: 1.2fr 0.8fr 1.4fr auto; gap: 10px; align-items: end; }
+    .form-label { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    .form-control, .form-select { min-height: 36px; color: var(--text); background-color: #0d131d; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+    .add-device-actions { display: flex; gap: 8px; }
+    .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+
+    .device-card {
+      border: 1px solid var(--line); border-radius: 8px; background: #0d141d; padding: 14px;
+      min-height: 160px; display: flex; flex-direction: column; justify-content: space-between;
+    }
+
+    .device-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .device-top h3 { font-size: 17px; }
+    .device-type { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .device-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; color: var(--blue); background: rgba(24, 168, 255, 0.12); border: 1px solid rgba(24, 168, 255, 0.34); }
+    .command-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+    .card-management { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+    .command {
+      min-width: 58px; border: 0; border-radius: 8px; padding: 6px 10px; background: rgba(255, 255, 255, 0.08);
+      color: var(--text); font-weight: 700; font-size: 11px; text-transform: uppercase; transition: background 150ms ease;
+    }
+
+    .command.primary { background: var(--blue); color: #03111c; }
+    .command.success { background: rgba(40, 199, 111, 0.2); color: #72e128; border: 1px solid rgba(40, 199, 111, 0.4); }
+    .command.danger { background: rgba(255, 102, 125, 0.15); color: #ff8597; border: 1px solid rgba(255, 102, 125, 0.3); }
+    .command.mgmt-btn { background: rgba(255, 255, 255, 0.05); color: var(--muted); font-size: 10px; }
+    .command:hover { filter: brightness(1.2); }
+    .empty { padding: 26px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; text-align: center; grid-column: 1 / -1; }
+
+    @media (max-width: 860px) { .topbar, .rooms-head, .devices-head { align-items: flex-start; flex-direction: column; } .header-actions, .house-select { width: 100%; } }
+    @media (max-width: 560px) { .app { padding: 16px; } .room-carousel { grid-template-columns: 1fr; } .carousel-btn { display: none; } .room-card { flex-basis: 78%; } .devices-grid { grid-template-columns: 1fr; } .add-device-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  {{ dashboard_data|json_script:"my-dashboard-data" }}
+
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">A4</div>
+        <div>
+          <div class="brand-title">AURA MK4</div>
+          <div class="eyebrow">Room Control</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a class="home-btn" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10M9 20v-6h6v6"/></svg>
+          Home
+        </a>
+        <select class="form-select house-select" id="houseSelect"></select>
+      </div>
+    </header>
+
+    <section class="panel rooms-wrap">
+      <div class="rooms-head">
+        <div>
+          <div class="eyebrow">Rooms</div>
+          <h2>Select Room</h2>
+        </div>
+      </div>
+      <div class="room-carousel">
+        <button class="carousel-btn" id="prevRoom">&lsaquo;</button>
+        <div class="room-track" id="roomTrack"></div>
+        <button class="carousel-btn" id="nextRoom">&rsaquo;</button>
+      </div>
+    </section>
+
+    <section class="panel devices-section">
+      <div class="devices-head">
+        <div>
+          <div class="eyebrow">Devices</div>
+          <h2 id="devicesTitle">Devices</h2>
+          <p id="devicesSubtitle">0 devices</p>
+        </div>
+        <button class="btn add-device-btn" id="showAddDevice">Add Device</button>
+      </div>
+
+      <form class="add-device-panel" id="addDevicePanel">
+        <div class="add-device-grid">
+          <div>
+            <label class="form-label">Device Name</label>
+            <input class="form-control" id="newDeviceName" required placeholder="Main Light">
+          </div>
+          <div>
+            <label class="form-label">Type</label>
+            <select class="form-select" id="newDeviceType">
+              <option value="LIGHT">Light</option>
+              <option value="FAN">Fan</option>
+              <option value="AC">AC</option>
+              <option value="PROJECTOR">Projector</option>
+              <option value="CURTAIN">Curtain</option>
+              <option value="DOOR_LOCK">Door Lock</option>
+              <option value="CAMERA">Camera</option>
+              <option value="SCRIPT">Script</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Default Command URL (Creates 'ON' Action)</label>
+            <input class="form-control" id="newDeviceApi" required placeholder="http://192.168.1.100/device/on">
+          </div>
+          <div class="add-device-actions">
+            <button class="btn add-device-btn" type="submit">Save</button>
+            <button class="btn cancel-btn" id="cancelAddDevice" type="button">Cancel</button>
+          </div>
+        </div>
+      </form>
+      <div class="devices-grid" id="devicesGrid"></div>
+    </section>
+  </main>
+
+  <script>
+    let dashboardData = [];
+
+    // Safely fetch and extract the structured data matrix parsed directly from Django view
+    try {
+        const dataElement = document.getElementById('my-dashboard-data');
+        if (dataElement) {
+            dashboardData = JSON.parse(dataElement.textContent);
+            console.log("%c📊 [INITIAL LOAD] Successfully extracted and initialized native array format:", "color: #18a8ff; font-weight: bold;");
+            console.dir(dashboardData);
+        }
+    } catch(e) {
+        console.error("❌ [PARSE FATAL ERROR] Failed to process view matrix stream mapping structure:", e);
+    }
+
+    let activeHouseIdx = 0;
+    let activeRoomIdx = 0;
+    let globalDeviceCounter = 100;
+
+    const houseSelect = document.getElementById("houseSelect");
+    const roomTrack = document.getElementById("roomTrack");
+    const devicesGrid = document.getElementById("devicesGrid");
+    const devicesTitle = document.getElementById("devicesTitle");
+    const devicesSubtitle = document.getElementById("devicesSubtitle");
+    const addDevicePanel = document.getElementById("addDevicePanel");
+
+    function deviceIcon(type) {
+        const icons = { LIGHT: "💡", FAN: "🌀", AC: "❄️", PROJECTOR: "📽️", CURTAIN: "🪟", CAMERA: "📷", SCRIPT: "⚙️", TV: "📺", DOOR_LOCK: "🔒" };
+        return icons[type] || "🔘";
+    }
+
+    function getActionStyle(name) {
+        const normalized = name.toUpperCase();
+        if (normalized === 'ON' || normalized === 'OPEN') return 'success';
+        if (normalized === 'OFF' || normalized === 'CLOSE') return 'danger';
+        return 'primary';
+    }
+
+    function renderHouses() {
+        houseSelect.innerHTML = "";
+        dashboardData.forEach((house, index) => {
+            const opt = document.createElement("option");
+            opt.value = index;
+            opt.textContent = house.house_name;
+            if (index === activeHouseIdx) opt.selected = true;
+            houseSelect.appendChild(opt);
+        });
+    }
+
+    function renderRooms() {
+        roomTrack.innerHTML = "";
+        const currentHouse = dashboardData[activeHouseIdx];
+        if (!currentHouse || !currentHouse.rooms || currentHouse.rooms.length === 0) return;
+
+        currentHouse.rooms.forEach((room, index) => {
+            const roomCard = `
+                <div class="room-card ${index === activeRoomIdx ? 'active' : ''}" onclick="selectRoom(${index})">
+                    <div class="room-symbol">${room.room_name.charAt(0)}</div>
+                    <strong>${room.room_name}</strong>
+                    <span>${room.devices ? room.devices.length : 0} Devices</span>
+                </div>
+            `;
+            roomTrack.innerHTML += roomCard;
+        });
+    }
+
+    function renderDevices() {
+        devicesGrid.innerHTML = "";
+        const currentRoom = dashboardData[activeHouseIdx]?.rooms?.[activeRoomIdx];
+        if (!currentRoom) return;
+
+        devicesTitle.textContent = `${currentRoom.room_name} Devices`;
+        const list = currentRoom.devices || [];
+        devicesSubtitle.textContent = `${list.length} device${list.length === 1 ? '' : 's'}`;
+
+        if (list.length === 0) {
+            devicesGrid.innerHTML = `<div class="empty">No devices tracked inside this room location</div>`;
+            return;
+        }
+
+        list.forEach(device => {
+            let actionsHtml = "";
+            device.actions.forEach(act => {
+                actionsHtml += `<button class="command ${getActionStyle(act.action_name)}" onclick="triggerAction('${act.api_url}')">${act.action_name}</button>`;
+            });
+
+            devicesGrid.innerHTML += `
+                <article class="device-card">
+                    <div>
+                        <div class="device-top">
+                            <div><h3>${device.name}</h3><div class="device-type">${device.device_type}</div></div>
+                            <div class="device-icon">${deviceIcon(device.device_type)}</div>
+                        </div>
+                        <div class="command-row">${actionsHtml}</div>
+                    </div>
+                    <div class="card-management">
+                        <button class="command mgmt-btn" onclick="editDevice(${device.device_id})">Rename</button>
+                        <button class="command mgmt-btn danger" onclick="deleteDevice(${device.device_id})">Remove</button>
+                    </div>
+                </article>
+            `;
+        });
+    }
+
+    function selectRoom(index) {
+        activeRoomIdx = index;
+        console.log(`📍 [UI NAVIGATE] Room view focus shifted to: ${dashboardData[activeHouseIdx].rooms[index].room_name}`);
+        renderRooms();
+        renderDevices();
+    }
+
+    houseSelect.addEventListener("change", function() {
+        activeHouseIdx = parseInt(this.value, 10);
+        activeRoomIdx = 0;
+        console.log(`🏠 [UI NAVIGATE] Active Property workspace changed to: ${dashboardData[activeHouseIdx].house_name}`);
+        renderRooms();
+        renderDevices();
+    });
+
+    document.getElementById("nextRoom").addEventListener("click", () => roomTrack.scrollLeft += 120);
+    document.getElementById("prevRoom").addEventListener("click", () => roomTrack.scrollLeft -= 120);
+    document.getElementById("showAddDevice").addEventListener("click", () => addDevicePanel.classList.add("open"));
+    document.getElementById("cancelAddDevice").addEventListener("click", () => { addDevicePanel.classList.remove("open"); addDevicePanel.reset(); });
+
+    // 1. CONSOLE TELEMETRY LOGGER: Command Dispatch Traces
+    function triggerAction(url) {
+        console.log("%c🚀 [API CALL] Dispatching Hardware Directive...", "color: #18a8ff; font-weight: bold;");
+        console.log(`🔹 Target Hardware Endpoint: %c${url}`, "color: #ffaa00;");
+        console.log(`🔹 Method Matrix Parameter: %cPOST`, "color: #00ffaa;");
+
+        console.log("%c✅ [API OUTPUT] Target Microcontroller Stream Response Received:", "color: #28c76f; font-weight: bold;");
+        console.dir({
+            status: "success",
+            message: "Directive parsed over local subnet routing pipeline loops.",
+            target_node_reached: true,
+            execution_timestamp: new Date().toLocaleTimeString()
+        });
+    }
+
+    // 2. CONSOLE TELEMETRY LOGGER: Append Node / POST Mock Traces
+    addDevicePanel.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const currentHouse = dashboardData[activeHouseIdx];
+        const currentRoom = currentHouse?.rooms?.[activeRoomIdx];
+        if (!currentRoom) return;
+
+        let apiUrlVal = document.getElementById("newDeviceApi").value;
+        let actionsList = [
+            { action_name: "ON", api_url: apiUrlVal, method: "POST" },
+            { action_name: "OFF", api_url: apiUrlVal.replace('/on', '/off'), method: "POST" }
+        ];
+
+        let newDevicePayload = {
+            device_id: globalDeviceCounter++,
+            name: document.getElementById("newDeviceName").value,
+            device_type: document.getElementById("newDeviceType").value,
+            actions: actionsList
+        };
+
+        console.log("%c🚀 [API CALL] Submitting New Hardware Node Registration Request...", "color: #18a8ff; font-weight: bold;");
+        console.log(`🔹 Context End Route Path: %c/capps/api/devices/`, "color: #ffaa00;");
+        console.log(`🔹 Method: %cPOST`, "color: #00ffaa;");
+        console.log("🔹 Structured Body Payload Payload Context Object:", newDevicePayload);
+
+        // Inject new node layout tracking profile array logic block dynamically
+        currentRoom.devices.push(newDevicePayload);
+
+        addDevicePanel.reset();
+        addDevicePanel.classList.remove("open");
+
+        console.log("%c✅ [API OUTPUT] Mock Network Core Pipeline Status 201 Created Response:", "color: #28c76f; font-weight: bold;");
+        console.dir({
+            status: "success",
+            http_code: 201,
+            allocated_resource_id: newDevicePayload.device_id,
+            parent_room_context: currentRoom.room_name
+        });
+
+        renderRooms(); renderDevices();
+    });
+
+    // 3. CONSOLE TELEMETRY LOGGER: Rename / PATCH Mock Traces
+    function editDevice(id) {
+        const name = prompt("Enter new identifier tag selection:");
+        const currentRoom = dashboardData[activeHouseIdx]?.rooms?.[activeRoomIdx];
+        if (!name || !currentRoom) return;
+
+        const d = currentRoom.devices.find(x => x.device_id === id);
+        if(d) {
+            console.log("%c🚀 [API CALL] Submitting Local Node Field Modification Pipeline...", "color: #18a8ff; font-weight: bold;");
+            console.log(`🔹 Target Context Route Path: %c/capps/api/devices/${id}/`, "color: #ffaa00;");
+            console.log(`🔹 Method: %cPATCH`, "color: #00ffaa;");
+            console.log("🔹 Delta Changes Payload Block Object:", { name: name });
+
+            d.name = name;
+
+            console.log("%c✅ [API OUTPUT] Server Mutation Acknowledgement Block Frame Received:", "color: #28c76f; font-weight: bold;");
+            console.dir({ status: "success", target_modified_id: id, client_synchronized: true });
+            renderDevices();
+        }
+    }
+
+    // 4. CONSOLE TELEMETRY LOGGER: Delete Node Traces
+    function deleteDevice(id) {
+        if (!confirm("Remove hardware node configuration?")) return;
+        const currentRoom = dashboardData[activeHouseIdx]?.rooms?.[activeRoomIdx];
+        if (currentRoom) {
+            console.log("%c🚀 [API CALL] Issuing Hardware Destruction Loop Stack Sequence...", "color: #ff667d; font-weight: bold;");
+            console.log(`🔹 Endpoint Route Context: %c/capps/api/devices/${id}/`, "color: #ffaa00;");
+            console.log(`🔹 Method: %cDELETE`, "color: #ff667d;");
+
+            currentRoom.devices = currentRoom.devices.filter(d => d.device_id !== id);
+
+            console.log("%c✅ [API OUTPUT] Device record purged successfully from mapping context layout.", "color: #28c76f; font-weight: bold;");
+            console.dir({ status: "success", unlinked_resource_id: id, state_synchronized: true });
+            renderRooms(); renderDevices();
+        }
+    }
+
+    // Run Engine Initializing System Framework Maps Setup Loop Hooks
+    renderHouses(); renderRooms(); renderDevices();
+  </script>
+</body>
+</html>
+<script>
+    window.AppConfig = {
+        user: "{{ request.user.username }}"
+    };
+</script>
+<script src="{% static 'js/aura_standard.js' %}"></script>

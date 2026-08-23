@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Location Intelligence Logger</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+:root {
+    --bg: #0b1120;
+    --card: #111827;
+    --card-soft: #0f172a;
+    --primary: #6366f1;
+    --primary-soft: #818cf8;
+    --accent: #10b981;
+    --text: #f3f4f6;
+    --muted: #94a3b8;
+    --border: #1e293b;
+    --shadow: 0 8px 30px rgba(0,0,0,.22);
+    --blue: #38bdf8;
+    --green: #34d399;
+}
+
+* { box-sizing: border-box; font-family: Inter, system-ui, Arial, sans-serif; }
+
+body {
+    margin: 0;
+    background: linear-gradient(180deg, #020617, #0b1120);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(14px);
+    background: rgba(2, 6, 23, .78);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+}
+.brand { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; }
+.logo {
+    width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center;
+    background: rgba(99, 102, 241, .18); border: 1px solid rgba(99, 102, 241, .38);
+    color: var(--primary-soft); font-weight: 800; font-size: 18px;
+}
+.brand-sub, .muted { color: var(--muted); font-size: 13px; }
+.breadcrumb-line { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; }
+.slash { color: var(--muted); font-weight: 400; }
+.active { color: var(--primary-soft); }
+
+.main { width: 100%; max-width: 1440px; margin: 0 auto; padding: 26px 22px 40px; }
+
+.card-panel {
+    background: linear-gradient(145deg, var(--card), #0f172a);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+}
+.card-panel h3 { margin-top: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.card-panel hr { border-color: var(--border); margin: 24px 0; }
+
+.form-label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-control, .form-select, .input-group-text {
+    background-color: var(--card-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+.form-control:focus, .form-select:focus {
+    background-color: var(--card-soft);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.2);
+    color: var(--text);
+}
+.form-control::placeholder { color: #475569; }
+.input-group-text { background-color: rgba(255,255,255,0.03); color: var(--muted); }
+.input-group .btn { border-radius: 0 8px 8px 0; border: 1px solid var(--border); border-left: none; }
+.input-group .form-control { border-radius: 8px 0 0 8px; }
+
+.save-btn {
+    background: var(--accent); border: 0; border-radius: 8px; color: white;
+    font-weight: 700; padding: 12px; transition: all 0.2s ease;
+}
+.save-btn:hover { background: #059669; color: white; transform: translateY(-1px); }
+.btn-primary-soft { background: rgba(99,102,241,0.15); color: var(--primary-soft); border: 1px solid rgba(99,102,241,0.3); }
+.btn-primary-soft:hover { background: var(--primary); color: white; }
+
+/* Grid system for layout view */
+.locations-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.recent-card {
+    background: var(--card-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    transition: background 0.2s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.recent-card:hover { background: rgba(255,255,255,0.02); border-color: rgba(99,102,241,0.4); }
+.recent-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.recent-title { font-size: 15px; font-weight: 600; margin: 0 0 4px 0; color: var(--text); cursor: pointer; }
+.recent-title:hover { color: var(--primary-soft); text-decoration: underline; }
+.recent-coords { font-size: 12px; font-family: monospace; color: var(--primary-soft); margin-bottom: 8px; }
+.recent-desc { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.badge-custom { background: rgba(56, 189, 248, 0.15); color: var(--blue); border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 500; font-size: 11px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
+.badge-success-soft { background: rgba(52, 211, 153, 0.15); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.3); }
+
+.action-buttons { display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: auto; }
+.action-buttons .btn { padding: 4px 8px; font-size: 13px; border-radius: 6px; }
+
+/* Floating Action Button */
+.location-btn {
+    position: fixed; bottom: 25px; right: 25px; width: 56px; height: 56px; border-radius: 50%;
+    font-size: 22px; display: grid; place-items: center; border: none;
+    background: linear-gradient(135deg, var(--primary), #4338ca); color: white;
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4); transition: transform 0.2s; z-index: 90;
+}
+.location-btn:hover { transform: scale(1.05); }
+
+.d-none { display: none !important; }
+
+@media (max-width: 900px) {
+    .topbar { padding: 14px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <a class="brand" href="#" onclick="showListView()">
+    <div class="logo"><i class="bi bi-geo-alt-fill"></i></div>
+    <div>
+      <div class="breadcrumb-line"><span>Home</span><span class="slash">/</span><span class="active" id="nav-title">Locations</span></div>
+      <span class="brand-sub">Location Intelligence Logger</span>
+    </div>
+  </a>
+  <div class="d-flex gap-2 align-items-center" id="search-container">
+    <div class="input-group" style="max-width: 300px;">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" id="search-input" class="form-control" placeholder="Search name or notes..." oninput="renderLocations()">
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <!-- LIST VIEW PANEL -->
+  <section id="list-view-panel">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="h4 mb-0 font-weight-bold">Saved Locations</h2>
+      <button class="btn btn-primary" onclick="showFormView()"><i class="bi bi-plus-lg me-2"></i>Add Location</button>
+    </div>
+    <div id="locations-container" class="locations-list-grid">
+      <!-- Generated Dynamically -->
+    </div>
+  </section>
+
+  <!-- FORM PANEL (Hidden by default) -->
+  <section id="form-panel" class="d-none" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-panel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 id="form-title"><i class="bi bi-pin-map-fill" style="color: var(--primary-soft)"></i> Log New Location</h3>
+        <button class="btn btn-sm btn-outline-secondary" onclick="showListView()">Cancel</button>
+      </div>
+      <p class="muted mb-4">Capture and store geospatial data with custom taxonomy.</p>
+
+      <input type="hidden" id="location-id">
+      <div class="row">
+        <div class="col-md-12 mb-3">
+          <label class="form-label">Place Name</label>
+          <input id="place-name" class="form-control" placeholder="e.g. Grandmother's Home" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Location Taxonomy</label>
+          <select id="taxonomy" class="form-select">
+            <option>Permanent</option>
+            <option>Temporary</option>
+            <option>Work</option>
+            <option>Relative</option>
+            <option>Favourite</option>
+            <option>Archived</option>
+          </select>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Visibility Protocol</label>
+            <select id="visibility" class="form-select">
+                <option value="0">Private (Encrypted)</option>
+                <option value="1">Family Network</option>
+                <option value="2">Public</option>
+            </select>
+        </div>
+
+        <div class="col-12 mb-3">
+          <label class="form-label">Remarks / Notes</label>
+          <textarea id="remarks" rows="2" class="form-control" placeholder="Gate codes, landmarks, or special instructions..."></textarea>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Latitude</label>
+          <div class="input-group">
+            <input id="lat" class="form-control" placeholder="0.000000" oninput="updateMapUri()">
+            <button class="btn btn-primary-soft" onclick="getLocation()" title="Fetch Coordinates">
+              <i class="bi bi-crosshair"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Longitude</label>
+          <div class="input-group">
+            <input id="lon" class="form-control" placeholder="0.000000" oninput="updateMapUri()">
+            <button class="btn btn-primary-soft" onclick="getLocation()" title="Fetch Coordinates">
+              <i class="bi bi-crosshair"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="col-12 mb-4">
+          <label class="form-label">Generated Map URI</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+            <input id="mapurl" class="form-control" placeholder="Awaiting inputs or GPS lock..." readonly>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn save-btn w-100" onclick="saveLocation()">
+        <i class="bi bi-floppy-fill me-2"></i> Commit Location Data
+      </button>
+    </div>
+  </section>
+</main>
+
+<button class="location-btn" onclick="quickAdd()" title="Quick Add Current Location">
+  <i class="bi bi-crosshair"></i>
+</button>
+
+<script>
+// --- 1. INITIALIZE FROM DJANGO CONTEXT ---
+// Django injects the serialized JSON here. If empty, fallback to empty array.
+const rawContext = '{{ locations_json|escapejs }}';
+let locations = rawContext ? JSON.parse(rawContext) : [];
+
+// --- CSRF TOKEN HELPER ---
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// --- API CONFIGURATION ---
+// Adjust this base URL to match exactly what your router evaluates to.
+const API_BASE_URL = '/appg/location/api/';
+
+// --- VIEW TOGGLES ---
+function showListView() {
+  document.getElementById('list-view-panel').classList.remove('d-none');
+  document.getElementById('search-container').classList.remove('d-none');
+  document.getElementById('form-panel').classList.add('d-none');
+  document.getElementById('nav-title').textContent = "Locations";
+  renderLocations();
+}
+
+function showFormView(uid = null) {
+  document.getElementById('list-view-panel').classList.add('d-none');
+  document.getElementById('search-container').classList.add('d-none');
+  document.getElementById('form-panel').classList.remove('d-none');
+
+  if(uid) {
+    document.getElementById('nav-title').textContent = "Edit Location";
+    document.getElementById('form-title').innerHTML = `<i class="bi bi-pencil-square" style="color: var(--primary-soft)"></i> Edit Location`;
+
+    // Fetch specific from our state
+    const loc = locations.find(l => String(l.uid) === String(uid));
+    if(loc) {
+      document.getElementById('location-id').value = loc.uid;
+      document.getElementById('place-name').value = loc.place_name;
+      document.getElementById('taxonomy').value = loc.status;
+
+      // Reverse map integer to string for dropdown
+      const visMap = { 1: 'Private (Encrypted)', 2: 'Family Network', 3: 'Public' };
+      document.getElementById('visibility').value = loc.visibility;
+
+      document.getElementById('remarks').value = loc.remarks;
+      document.getElementById('lat').value = loc.latitude;
+      document.getElementById('lon').value = loc.longitude;
+      updateMapUri();
+    }
+  } else {
+    document.getElementById('nav-title').textContent = "Add New Location";
+    document.getElementById('form-title').innerHTML = `<i class="bi bi-pin-map-fill" style="color: var(--primary-soft)"></i> Log New Location`;
+
+    // Clear form
+    document.getElementById('location-id').value = '';
+    document.getElementById('place-name').value = '';
+    document.getElementById('taxonomy').value = 'Permanent';
+    document.getElementById('visibility').value = 'Private (Encrypted)';
+    document.getElementById('remarks').value = '';
+    document.getElementById('lat').value = '';
+    document.getElementById('lon').value = '';
+    document.getElementById('mapurl').value = '';
+  }
+}
+
+// --- CORE FUNCTIONS ---
+function updateMapUri() {
+  const lat = document.getElementById('lat').value.trim();
+  const lon = document.getElementById('lon').value.trim();
+  const mapInput = document.getElementById("mapurl");
+  if(lat && lon && !isNaN(lat) && !isNaN(lon)) {
+    mapInput.value = "https://maps.google.com/?q=" + lat + "," + lon;
+  } else {
+    mapInput.value = "";
+  }
+}
+
+function getLocation() {
+  const latInput = document.getElementById("lat");
+  const lonInput = document.getElementById("lon");
+  latInput.value = "Acquiring...";
+  lonInput.value = "Acquiring...";
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        latInput.value = position.coords.latitude.toFixed(6);
+        lonInput.value = position.coords.longitude.toFixed(6);
+        updateMapUri();
+      },
+      function(error) {
+        latInput.value = ""; lonInput.value = "";
+        alert("Unable to fetch location automatically. Please type coordinates manually.");
+      },
+      { enableHighAccuracy: true }
+    );
+  } else {
+    alert("Geolocation is not supported by this browser.");
+  }
+}
+
+function quickAdd() {
+  showFormView();
+  getLocation();
+}
+
+// --- CRUD OPERATIONS (FETCH API) ---
+
+async function saveLocation() {
+  const uid = document.getElementById('location-id').value;
+  const place_name = document.getElementById('place-name').value.trim();
+  const status = document.getElementById('taxonomy').value;
+  const visibilityStr = document.getElementById('visibility').value;
+  const remarks = document.getElementById('remarks').value.trim();
+  const latitude = document.getElementById('lat').value.trim();
+  const longitude = document.getElementById('lon').value.trim();
+  const map_url = document.getElementById('mapurl').value.trim();
+
+  if(!place_name) { alert("Please enter a Place Name."); return; }
+
+  // Map visibility string to integer for the model
+  // const visMap = { 'Private (Encrypted)': 1, 'Family Network': 2, 'Public': 3 };
+  //const visibilityInt = visMap[visibilityStr] || 1;
+
+  const payload = {
+    user: "{{ request.user.username }}", // Update this if relying on Django auth or forms
+    place_name: place_name,
+    status: status,
+    visibility: visibilityStr,
+    remarks: remarks,
+    latitude: latitude,
+    longitude: longitude,
+    map_url: map_url
+  };
+
+  try {
+    let response;
+    if (uid) {
+      // UPDATE (PUT)
+      response = await fetch(`${API_BASE_URL}${uid}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      // CREATE (POST)
+      response = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (response.ok) {
+      const savedData = await response.json();
+
+      // Update local state to reflect DB immediately
+      if (uid) {
+        const idx = locations.findIndex(l => String(l.uid) === String(uid));
+        if(idx !== -1) locations[idx] = savedData;
+      } else {
+        locations.unshift(savedData);
+      }
+
+      showListView();
+    } else {
+      const errorData = await response.json();
+      console.error("Save Error:", errorData);
+      alert("Failed to save location. Check console for details.");
+    }
+  } catch (err) {
+    console.error("Network Error:", err);
+    alert("Network error occurred while saving.");
+  }
+}
+
+async function deleteLocation(uid) {
+  if(confirm("Are you sure you want to delete this location entry?")) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${uid}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': csrftoken }
+      });
+
+      if (response.ok || response.status === 204) {
+        // Remove from local array
+        locations = locations.filter(l => String(l.uid) !== String(uid));
+        renderLocations();
+      } else {
+        alert("Failed to delete location.");
+      }
+    } catch (err) {
+      console.error("Network Error:", err);
+      alert("Network error occurred while deleting.");
+    }
+  }
+}
+// --- RENDER & UTILS ---
+
+function openMaps(lat, lon) {
+  if(lat && lon && lat !== "null" && lon !== "null") {
+    // This will open the native Maps app on mobile, or Google Maps on desktop
+    window.open(`https://maps.google.com/?q=${lat},${lon}`, '_blank');
+  } else {
+    alert("Coordinates not available for this entry.");
+  }
+}
+
+function shareLocation(uid) {
+  // Find the location by ID to avoid HTML string-escaping crashes
+  const loc = locations.find(l => String(l.uid) === String(uid));
+  if (!loc) return;
+
+  const url = (loc.latitude && loc.longitude) ? `https://maps.google.com/?q=${loc.latitude},${loc.longitude}` : '';
+  const textStr = `Location: ${loc.place_name}\nNotes: ${loc.remarks}\nLink: ${url}`;
+
+  // 1. Try Native Web Share API (Works on Mobile/HTTPS)
+  if (navigator.share) {
+    navigator.share({
+      title: loc.place_name,
+      text: textStr
+    }).catch(err => {
+      console.error("Native share cancelled or failed:", err);
+      fallbackCopy(textStr);
+    });
+  } else {
+    // 2. Fallback for Desktop or non-HTTPS
+    fallbackCopy(textStr);
+  }
+}
+
+function fallbackCopy(textStr) {
+  // Try modern clipboard API first
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(textStr)
+      .then(() => alert("Location details copied to clipboard!"))
+      .catch(err => console.error("Clipboard API failed:", err));
+  } else {
+    // Super-fallback for testing on local HTTP networks
+    const textArea = document.createElement("textarea");
+    textArea.value = textStr;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      alert("Location details copied to clipboard!");
+    } catch (err) {
+      alert("Please copy manually:\n\n" + textStr);
+    }
+    document.body.removeChild(textArea);
+  }
+}
+
+function renderLocations() {
+  const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+  const container = document.getElementById('locations-container');
+  container.innerHTML = '';
+
+  const filtered = locations.filter(loc => {
+    return (loc.place_name || '').toLowerCase().includes(searchVal) ||
+           (loc.remarks || '').toLowerCase().includes(searchVal);
+  });
+
+  if(filtered.length === 0) {
+    container.innerHTML = `<div class="text-center w-100 p-5 text-muted">No locations match your filter requirements.</div>`;
+    return;
+  }
+
+  filtered.forEach(loc => {
+    const card = document.createElement('div');
+    card.className = 'recent-card';
+
+    const isPermanent = loc.status === 'Permanent' ? 'badge-success-soft' : '';
+    const coordString = (loc.latitude && loc.longitude) ? `${loc.latitude}, ${loc.longitude}` : 'No Coordinates Stored';
+
+    card.innerHTML = `
+      <div>
+        <div class="recent-header">
+          <div>
+            <h4 class="recent-title" onclick="openMaps('${loc.latitude}', '${loc.longitude}')">${loc.place_name}</h4>
+            <div class="recent-coords">${coordString}</div>
+          </div>
+          <span class="badge-custom ${isPermanent}">${loc.status || 'N/A'}</span>
+        </div>
+        <div class="recent-desc"><i class="bi bi-info-circle me-1"></i> ${loc.remarks || 'No remarks provided.'}</div>
+      </div>
+      <div class="action-buttons">
+        <!-- FIXED SHARE BUTTON: Only passes the UID -->
+        <button class="btn btn-sm btn-outline-light flex-grow-1" onclick="shareLocation('${loc.uid}')">
+          <i class="bi bi-share-fill me-1"></i> Share
+        </button>
+        <!-- NEW BUTTON: Open Map App Symbol -->
+        <button class="btn btn-sm btn-outline-info" onclick="openMaps('${loc.latitude}', '${loc.longitude}')" title="Open in Maps">
+          <i class="bi bi-geo-alt-fill"></i>
+        </button>
+        <button class="btn btn-sm btn-primary-soft" onclick="showFormView('${loc.uid}')" title="Edit">
+          <i class="bi bi-pencil-fill"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteLocation('${loc.uid}')" title="Delete">
+          <i class="bi bi-trash3-fill"></i>
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+// Initial Load
+document.addEventListener("DOMContentLoaded", () => {
+  showListView();
+});
+</script>
+</body>
+</html>
+
+<script>
+    window.AppConfig = {
+        user: "{{ request.user.username }}"
+    };
+</script>
+<script src="{% static 'js/aura_standard.js' %}"></script>

@@ -1,0 +1,17 @@
+# API Settings
+[api]
+user_api_url = "https://auraengine.pythonanywhere.com/dem/api/get_user_for_data_log/"
+base_url = "https://auraengine.pythonanywhere.com"
+classifier_url = "https://auraengine.pythonanywhere.com/dem/api/classification_data/"
+
+# Execution Settings
+[settings]
+daily_run = true
+start_day = 16
+end_day = 18
+year_month = "2026-08"
+enable_data_log = true  # Set to true to send data to the datalog API
+
+# Classification Settings
+classification_past_days = 120     # Past days to check from end_date for classification lookup
+print_classification_data = true  # Set to true to print classification data returned by the API

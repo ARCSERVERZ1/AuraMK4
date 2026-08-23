@@ -1,0 +1,342 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Aura | Home Automation</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/HomeAuto.css' %}">
+</head>
+
+<body>
+
+{% csrf_token %}
+
+<div class="container-fluid app-container">
+
+    <!-- ===================================================== -->
+    <!-- HEADER -->
+    <!-- ===================================================== -->
+
+    <header class="top-header">
+
+        <div class="brand">
+
+            <div class="brand-logo">
+                Home
+            </div>
+
+            <div>
+
+                <h3>Aura</h3>
+
+                <small> Home Automation</small>
+
+            </div>
+
+        </div>
+
+        <div class="header-actions">
+
+          <select id="houseSelector" class="form-select">
+    {% for h in houses %}
+        <option value="{{ forloop.counter0 }}"
+            {% if h.house == defaultHouse %}selected{% endif %}>
+            {{ h.house }}
+        </option>
+    {% endfor %}
+</select>
+
+            <button
+                    class="btn btn-primary"
+                    onclick="openModalForCreate()">
+
+                <i class="bi bi-plus-lg"></i>
+
+                Add Device
+
+            </button>
+
+        </div>
+
+    </header>
+
+    <!-- ===================================================== -->
+    <!-- ROOM CAROUSEL -->
+    <!-- ===================================================== -->
+
+    <section class="room-section">
+
+        <div class="section-title">
+
+            <h4>Rooms</h4>
+
+        </div>
+
+        <div
+                id="roomCarousel"
+                class="room-carousel">
+
+        </div>
+
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- DEVICES -->
+    <!-- ===================================================== -->
+
+    <section class="device-section">
+
+        <div class="section-title">
+
+            <h4 id="currentRoomTitle">
+                Devices
+            </h4>
+
+        </div>
+
+        <div
+                id="deviceContainer"
+                class="device-grid">
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- TELEMETRY -->
+<!-- ===================================================== -->
+
+<div class="telemetry-console">
+
+    <div class="console-title">
+
+        <i class="bi bi-terminal"></i>
+
+        API Console
+
+    </div>
+
+    <div id="console-output">
+
+        Waiting...
+
+    </div>
+
+</div>
+
+
+
+<!-- ===================================================== -->
+<!-- MODAL -->
+<!-- ===================================================== -->
+
+<div
+        class="modal fade"
+        id="deviceModal"
+        tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 id="modalTitle">
+
+                    Add Device
+
+                </h5>
+
+                <button
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <form id="deviceForm">
+
+                <input
+                        type="hidden"
+                        id="formMode"
+                        value="create">
+
+                <input
+                        type="hidden"
+                        id="deviceUid">
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+
+                        <label>House</label>
+
+                        <input
+                                id="inputHouse"
+                                name="House"
+                                class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Room</label>
+
+                        <input
+                                id="inputRoom"
+                                name="room"
+                                class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Device Name</label>
+
+                        <input
+                                id="inputName"
+                                name="device_name"
+                                class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Action</label>
+
+                        <input
+                                id="inputAction"
+                                name="action"
+                                class="form-control">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>API URL</label>
+
+                        <input
+                                id="inputApiUrl"
+                                name="api_url"
+                                class="form-control">
+
+                    </div>
+
+                    <div class="row">
+
+                        <div class="col">
+
+                            <label>Display Order</label>
+
+                            <input
+                                    type="number"
+                                    id="inputOrder"
+                                    class="form-control"
+                                    value="1">
+
+                        </div>
+
+                        <div class="col d-flex align-items-end">
+
+                            <div class="form-check form-switch">
+
+                                <input
+                                        class="form-check-input"
+                                        type="checkbox"
+                                        id="inputActive"
+                                        checked>
+
+                                <label class="form-check-label">
+
+                                    Active
+
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button
+                            type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button
+                            type="submit"
+                            class="btn btn-primary">
+
+                        Save
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- DJANGO DATA -->
+<!-- ===================================================== -->
+
+{{ houses|json_script:"houses-data" }}
+
+<script>
+
+const HOUSES = JSON.parse(
+    document.getElementById("houses-data").textContent
+);
+
+const CRUD_API_URL = "/appg/home-auto-view/api/";
+
+const ACTION_API_URL = "/appg/home-auto-action/";
+
+</script>
+
+
+<!-- Bootstrap -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Custom JS -->
+
+<script src="{% static 'js/HomeAuto.js' %}"></script>
+
+</body>
+</html>
+
+<script>
+    window.AppConfig = {
+        user: "{{ request.user.username }}"
+    };
+</script>
+<script src="{% static 'js/aura_standard.js' %}"></script>

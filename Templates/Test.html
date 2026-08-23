@@ -1,0 +1,24 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static Test</title>
+
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+
+<div class="container">
+    <h1>🎉 Static Files Are Working!</h1>
+    <p>If this page has a light gray background, a white card, and a blue button, your CSS is loading correctly.</p>
+
+    <button onclick="alert('Success!')">
+        Test Button
+    </button>
+</div>
+
+</body>
+</html>

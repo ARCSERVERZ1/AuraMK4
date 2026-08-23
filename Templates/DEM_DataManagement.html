@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transactions Dashboard</title>
+
+<style>
+:root{
+  --bg:#0f172a; --card:#020617; --border:#1e293b; --text:#e5e7eb; --muted:#94a3b8;
+  --accent:#38bdf8; --success:#22c55e; --danger:#ef4444; --radius:12px;
+}
+*{box-sizing:border-box;font-family:system-ui;}
+body{margin:0;background:var(--bg);color:var(--text);}
+.container{max-width:1400px;margin:auto;padding:16px;}
+header{background:var(--card);padding:16px;border-bottom:1px solid var(--border);margin-bottom:16px;border-radius:var(--radius);}
+header h1{margin:0;font-size:1.5rem;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+.header{font-size:1.2rem;font-weight:600;margin-bottom:12px;}
+button{background:var(--accent);border:none;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;}
+button.secondary{background:#1e293b;color:var(--text);}
+button.small{font-size:0.75rem;padding:6px 10px;}
+button:disabled{opacity:.6;cursor:not-allowed;}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px;}
+input,select,textarea{width:100%;padding:9px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;}
+textarea{resize:vertical;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;min-width:1700px;border-collapse:collapse;}
+th,td{padding:10px;border-bottom:1px solid var(--border);font-size:0.78rem;white-space:nowrap;}
+th{color:var(--muted);}
+th.sortable{cursor:pointer;}
+th.sortable::after{content:"";margin-left:4px;font-size:0.7rem;}
+th.sorted-asc::after{content:" ↑";}
+th.sorted-desc::after{content:" ↓";}
+.status.active{color:var(--success);font-weight:600;}
+.status.inactive{color:var(--danger);font-weight:600;}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:100;}
+.modal-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;width:95%;max-width:600px;}
+.modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media(max-width:600px){.modal-grid{grid-template-columns:1fr;}}
+.modal-actions{display:flex;justify-content:center;gap:12px;margin-top:16px;}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:12px 16px;border-radius:8px;display:none;z-index:9999;font-size:.85rem;}
+    .status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Logged */
+.status-1 {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* Unclassified */
+.status-11 {
+  background: #9e9e9e;
+  color: white;
+}
+
+/* Low */
+.status-12 {
+  background: #ffb74d;
+  color: #000;
+}
+
+/* Medium */
+.status-13 {
+  background: #64b5f6;
+  color: #000;
+}
+
+/* High */
+.status-14 {
+  background: #81c784;
+  color: #000;
+}
+
+/* Very High */
+.status-15 {
+  background: #2e7d32;
+  color: white;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Transactions Dashboard</h1>
+</header>
+
+<div class="container">
+  <div class="card">
+    <div class="filters">
+      <input type="date" id="startDate">
+      <input type="date" id="endDate">
+      <button onclick="loadData()">Apply</button>
+      <button class="secondary" onclick="openCreate()">+ Add New</button>
+      <button class="secondary" id="bulkEditBtn" onclick="openBulkEdit()" disabled>Bulk Edit</button>
+      <button class="secondary" id="bulkDeleteBtn" onclick="bulkDelete()" disabled>Bulk Delete</button>
+      <input type="text" id="tableSearch" placeholder="Search all columns..." oninput="applySearch()">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+    <table>
+  <thead>
+    <tr>
+      <th><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+      <th>Edit</th>
+      <th class="sortable">Date</th>
+      <th class="sortable">Amount</th>
+      <th class="sortable">Receiver</th>
+      <th class="sortable">Category</th>
+      <th class="sortable">Sub</th>
+      <th class="sortable">Group</th>
+      <th class="sortable">Message</th>
+      <th class="sortable">Type</th>
+      <th class="sortable">Sender</th>
+      <th class="sortable">Payment</th>
+      <th class="sortable">UID</th>
+      <th class="sortable">AI Classification</th>
+      <th class="sortable">User</th>
+      <th>Auto Transaction</th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+    </div>
+  </div>
+</div>
+
+<!-- CREATE/EDIT MODAL -->
+<div class="modal" id="formModal">
+  <div class="modal-card">
+    <div class="header" id="modalTitle"></div>
+    <div class="modal-grid">
+      <input id="f_user" placeholder="User">
+      <input id="f_date" type="date">
+      <select id="f_type">
+        <option value="sent">Sent</option>
+        <option value="received">Received</option>
+      </select>
+      <input id="f_amount" placeholder="Amount">
+      <input id="f_sender" placeholder="Sender Bank">
+      <input id="f_receiver" placeholder="Receiver Bank">
+      <textarea id="f_message" placeholder="Message"></textarea>
+      <select id="f_category"></select>
+      <select id="f_sub"></select>
+      <input id="f_group" placeholder="Group">
+      <input id="f_payment" placeholder="Payment Method">
+      <select id="f_status">
+        <option value="1">Active</option>
+        <option value="0">Inactive</option>
+      </select>
+      <label style="grid-column: span 2;"><input type="checkbox" id="f_is_auto_cat"> Use for auto transaction</label>
+    </div>
+    <div class="modal-actions">
+      <button id="saveBtn" onclick="saveForm()">Save</button>
+      <button class="secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK EDIT MODAL -->
+<div class="modal" id="bulkModal">
+  <div class="modal-card">
+    <div class="header">Bulk Edit Transactions</div>
+    <div class="modal-grid">
+      <label><input type="checkbox" id="bulk_amount_chk"> Amount</label>
+      <input type="text" id="bulk_amount" placeholder="Amount">
+
+      <label><input type="checkbox" id="bulk_category_chk"> Category & Sub</label>
+      <select id="bulk_category"></select>
+      <select id="bulk_sub"></select>
+
+      <label><input type="checkbox" id="bulk_group_chk"> Group</label>
+      <input type="text" id="bulk_group" placeholder="Group">
+
+      <label style="grid-column: span 2;"><input type="checkbox" id="bulk_is_auto_cat"> Use for auto transaction</label>
+    </div>
+    <div class="modal-actions">
+      <button id="bulkSaveBtn" onclick="saveBulkEdit()">Save</button>
+      <button class="secondary" onclick="closeBulkModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const BASE_URL="{{baseURL}}";
+const USER_CTX="{{user}}";
+const MODE={{ mode }};
+let editUID=null, ROW_CACHE={}, DATA_CACHE=[], CATEGORY_DATA={};
+const today = new Date();
+
+function formatDateLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// First day of current month
+const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+startDate.value = formatDateLocal(firstDay);
+endDate.value = formatDateLocal(today);
+console.log(startDate.value);
+
+// THEME
+function applyMode(mode){
+  const root=document.documentElement;
+  if(mode==1){
+    root.style.setProperty('--bg','#f4f6f8'); root.style.setProperty('--card','#fff'); root.style.setProperty('--text','#111827');
+    root.style.setProperty('--muted','#6b7280'); root.style.setProperty('--border','#e5e7eb');
+  } else if(mode==2){
+    root.style.setProperty('--bg','#2b2b3c'); root.style.setProperty('--card','#393952'); root.style.setProperty('--text','#e0e0e0');
+    root.style.setProperty('--muted','#a0a0a0'); root.style.setProperty('--border','#555');
+  } else if(mode==3){
+    root.style.setProperty('--bg','#121212'); root.style.setProperty('--card','#1e1e2f'); root.style.setProperty('--text','#e0e0e0');
+    root.style.setProperty('--muted','#a0a0a0'); root.style.setProperty('--border','#333');
+  }
+}
+applyMode(MODE);
+
+// UTILS
+function showToast(msg,success=true){const t=document.getElementById('toast'); t.innerText=msg; t.style.borderColor=success?'#22c55e':'#ef4444'; t.style.display='block'; setTimeout(()=>t.style.display='none',3000);}
+
+// FETCH CATEGORIES
+async function fetchCategories(){
+  try{
+    const res = await fetch(`${BASE_URL}/dem/api/categories/`);
+    const data = await res.json(); CATEGORY_DATA=data.categories;
+    populateCategorySelect(f_category); populateCategorySelect(bulk_category);
+  }catch(e){console.error(e);}
+}
+function populateCategorySelect(selectElem){
+  selectElem.innerHTML='<option value="">Select Category</option>';
+  Object.keys(CATEGORY_DATA).forEach(cat=>{ const opt=document.createElement('option'); opt.value=cat; opt.text=cat; selectElem.add(opt); });
+}
+function populateSubCategorySelect(categoryElem,subElem){
+  subElem.innerHTML='<option value="">Select Sub Category</option>';
+  const cat=categoryElem.value;
+  if(cat && CATEGORY_DATA[cat]) CATEGORY_DATA[cat].forEach(sc=>{ const opt=document.createElement('option'); opt.value=sc.sub_category; opt.text=sc.sub_category; subElem.add(opt); });
+}
+f_category.addEventListener('change',()=>populateSubCategorySelect(f_category,f_sub));
+bulk_category.addEventListener('change',()=>populateSubCategorySelect(bulk_category,bulk_sub));
+fetchCategories();
+
+// LOAD DATA
+async function loadData(){
+  const url=`${BASE_URL}/dem/api/transactions/list/?user=${USER_CTX}&start_date=${startDate.value}&end_date=${endDate.value}`;
+  console.log('LIST URL:',url);
+  const res=await fetch(url); const data=await res.json();
+  DATA_CACHE=data; ROW_CACHE={};
+  renderTableRows(data);
+}
+
+function renderTableRows(data){
+  tbody.innerHTML='';
+  data.forEach(r=>{
+    ROW_CACHE[r.uid]=r;
+    tbody.innerHTML+=`<tr>
+      <td><input type="checkbox" class="rowCheck" onchange="updateBulkBtn()"></td>
+      <td><button class="small" onclick="openEdit(${r.uid})">Edit</button></td>
+      <td>${r.date}</td>
+      <td>₹${r.amount}</td>
+      <td>${r.receiver_bank}</td>
+      <td>${r.category}</td>
+      <td>${r.sub_category}</td>
+      <td>${r.group}</td>
+      <td>${r.message}</td>
+      <td>${r.transaction_type}</td>
+      <td>${r.sender_bank}</td>
+      <td>${r.payment_method}</td>
+      <td>${r.uid}</td>
+        <td>
+        <span class="status-badge status-${r.status}">
+        ${
+        r.status === 1 ? "Logged" :
+        r.status === 2 ? "Auto-Classified" :
+        r.status === 3 ? "Manual" :
+
+        r.status === 11 ? "AI-Unclassified" :
+        r.status === 12 ? "AI-Low" :
+        r.status === 13 ? "AI-Medium" :
+        r.status === 14 ? "AI-High" :
+        r.status === 15 ? "AI-Very High" :
+        `Code ${r.status}`
+        }
+        </span>
+        </td>
+      <td>${r.user}</td>
+      <td><input type="checkbox" disabled ${r.is_auto_cat==1?'checked':''}></td>
+    </tr>`;
+  });
+  updateBulkBtn();
+}
+
+
+// CREATE / EDIT MODAL
+const f_is_auto_cat = document.getElementById('f_is_auto_cat');
+const bulk_is_auto_cat = document.getElementById('bulk_is_auto_cat');
+
+function openCreate(){
+  editUID=null; modalTitle.innerText='Create Transaction';
+  f_user.value=USER_CTX; f_date.value=today.toISOString().split('T')[0]; f_type.value='sent';
+  f_amount.value=''; f_sender.value=''; f_receiver.value=''; f_message.value='';
+  f_category.value=''; f_sub.value=''; f_group.value='-'; f_payment.value=''; f_status.value='1';
+  f_is_auto_cat.checked=false;
+  formModal.style.display='flex';
+}
+function openEdit(uid){
+  const r=ROW_CACHE[uid]; if(!r)return; editUID=uid; modalTitle.innerText='Edit Transaction';
+  f_user.value=r.user; f_date.value=r.date; f_type.value=r.transaction_type; f_amount.value=r.amount;
+  f_sender.value=r.sender_bank; f_receiver.value=r.receiver_bank; f_message.value=r.message;
+  f_category.value=r.category; populateSubCategorySelect(f_category,f_sub); f_sub.value=r.sub_category;
+  f_group.value=r.group; f_payment.value=r.payment_method; f_status.value=r.status;
+  f_is_auto_cat.checked = r.is_auto_cat==1;
+  formModal.style.display='flex';
+}
+function closeModal(){formModal.style.display='none';}
+
+// SAVE SINGLE
+async function saveForm(){
+  const btn=document.getElementById('saveBtn'); btn.disabled=true; btn.innerText='Saving...';
+  const payload={
+    user:f_user.value,date:f_date.value,transaction_type:f_type.value,amount:f_amount.value,
+    sender_bank:f_sender.value,receiver_bank:f_receiver.value,message:f_message.value,
+    category:f_category.value,sub_category:f_sub.value,group:f_group.value,
+    payment_method:f_payment.value,status:f_status.value,
+    is_auto_cat: f_is_auto_cat.checked?1:0
+  };
+  const isEdit=editUID!==null;
+  const url=isEdit?`${BASE_URL}/dem/api/transactions/${editUID}/`:`${BASE_URL}/dem/api/transactions/`;
+  const method=isEdit?'PUT':'POST';
+  console.group('API CALL'); console.log('URL:',url,'METHOD:',method,'PAYLOAD:',payload);
+  try{
+    const res=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const response=await res.json(); console.log('STATUS:',res.status,'RESPONSE:',response); console.groupEnd();
+    if(!res.ok){showToast(JSON.stringify(response),false); return;}
+    showToast(isEdit?'Updated successfully':'Created successfully'); closeModal(); loadData();
+  }catch(e){console.error(e); showToast('Network/server error',false);}
+  finally{btn.disabled=false; btn.innerText='Save';}
+}
+
+// BULK EDIT
+function updateBulkBtn(){
+  const anyChecked=document.querySelectorAll('.rowCheck:checked').length>0;
+  bulkEditBtn.disabled=!anyChecked; bulkDeleteBtn.disabled=!anyChecked;
+}
+function toggleAll(chk){document.querySelectorAll('.rowCheck').forEach(c=>c.checked=chk.checked); updateBulkBtn();}
+function openBulkEdit(){
+  bulk_amount.value=''; bulk_category.value=''; bulk_sub.value=''; bulk_group.value='';
+  bulk_amount_chk.checked=false; bulk_category_chk.checked=false; bulk_group_chk.checked=false; bulk_is_auto_cat.checked=false;
+  bulkModal.style.display='flex';
+}
+function closeBulkModal(){bulkModal.style.display='none';}
+async function saveBulkEdit(){
+  const btn=document.getElementById('bulkSaveBtn'); btn.disabled=true; btn.innerText='Saving...';
+  const rows=document.querySelectorAll('.rowCheck:checked');
+  for(const r of rows){
+    const tr=r.closest('tr'); const uid=parseInt(tr.children[12].innerText);
+    const original=ROW_CACHE[uid]; let payload={...original};
+    if(bulk_amount_chk.checked) payload.amount=bulk_amount.value;
+    if(bulk_category_chk.checked){ payload.category=bulk_category.value; payload.sub_category=bulk_sub.value; }
+    if(bulk_group_chk.checked) payload.group=bulk_group.value;
+    if(bulk_is_auto_cat.checked) payload.is_auto_cat=1;
+    const url=`${BASE_URL}/dem/api/transactions/${uid}/`;
+    console.group('BULK API',uid); console.log('URL:',url,'PAYLOAD:',payload);
+    try{ const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const response=await res.json(); console.log('STATUS:',res.status,'RESPONSE:',response);
+      if(!res.ok) showToast(`Row ${uid} failed: ${JSON.stringify(response)}`,false);
+    }catch(e){console.error(e); showToast(`Row ${uid} network error`,false);}
+    console.groupEnd();
+  }
+  showToast('Bulk update completed'); btn.disabled=false; btn.innerText='Save'; closeBulkModal(); loadData();
+}
+
+// BULK DELETE
+async function bulkDelete(){
+  const rows=document.querySelectorAll('.rowCheck:checked'); if(rows.length===0) return;
+  if(!confirm(`Are you sure you want to delete ${rows.length} transaction(s)?`)) return;
+  for(const r of rows){
+    const tr=r.closest('tr'); const uid=parseInt(tr.children[12].innerText);
+    const url=`${BASE_URL}/dem/api/transactions/${uid}/`;
+    console.group('BULK DELETE', uid); console.log('URL:', url);
+    try{ const res=await fetch(url,{method:'DELETE'}); if(!res.ok){ const response=await res.json(); showToast(`Delete failed for UID ${uid}`, false);} }catch(e){showToast(`Network error UID ${uid}`, false);}
+    console.groupEnd();
+  }
+  showToast('Selected transactions deleted'); loadData();
+}
+
+// SEARCH
+function applySearch(){
+  const query=tableSearch.value.toLowerCase();
+  renderTableRows(DATA_CACHE.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(query))));
+}
+
+// SORTING
+let sortColumn=null,sortAsc=true;
+document.querySelectorAll('th.sortable').forEach((th,idx)=>{
+  th.onclick=()=>{
+    const keys=['uid','user','date','transaction_type','amount','sender_bank','receiver_bank','message','category','sub_category','group','payment_method','status'];
+    const key=keys[idx]; sortAsc=(sortColumn===key)?!sortAsc:true; sortColumn=key;
+    DATA_CACHE.sort((a,b)=>{
+      let valA=a[key],valB=b[key];
+      if(key==='uid'||key==='amount'){valA=parseFloat(valA);valB=parseFloat(valB);}
+      if(valA<valB) return sortAsc?-1:1; if(valA>valB) return sortAsc?1:-1; return 0;
+    });
+    document.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('sorted-asc','sorted-desc'));
+    th.classList.add(sortAsc?'sorted-asc':'sorted-desc');
+    applySearch();
+  };
+});
+
+// INIT
+loadData();
+</script>
+
+</body>
+</html>

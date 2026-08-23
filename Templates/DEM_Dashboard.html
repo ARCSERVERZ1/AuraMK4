@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Expense Dashboard - Themed</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ---------------------- COLOR PALETTE ---------------------- */
+:root {
+  /* Default light mode colors */
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --primary: #4f46e5;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --danger: #ef4444;
+  --success: #22c55e;
+}
+
+/* ---------------------- GLOBAL STYLES ---------------------- */
+* { box-sizing: border-box; font-family: Inter, system-ui, Arial; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+header { background: var(--primary); color: #fff; padding: 16px; text-align: center; font-size: 20px; font-weight: bold; }
+.main { padding: 20px; }
+
+/* ---------------------- Top Actions ---------------------- */
+.top-actions { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 12px; }
+.planner-btn, .data-btn { background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+
+/* ---------------------- Filter Card ---------------------- */
+.filter-card { background: var(--card); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.2); margin-bottom: 20px; overflow: hidden; }
+.filter-header { padding: 14px 16px; display: flex; justify-content: space-between; cursor: pointer; border-bottom: 1px solid var(--border); }
+.filter-body { padding: 16px; display: none; }
+.filter-card.open .filter-body { display: block; }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.filter-group label { font-size: 13px; color: var(--muted); }
+.filter-group input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.apply-btn { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; margin-top: 12px; float: right; }
+
+/* ---------------------- KPI ---------------------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.kpi { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.kpi h2 { margin: 8px 0 0; }
+
+/* ---------------------- Charts ---------------------- */
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.card { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+
+/* ---------------------- Planner Modal ---------------------- */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 999; }
+.modal.open { display: flex; }
+.modal-card { background: var(--card); width: 650px; max-height: 80vh; overflow: auto; border-radius: 12px; padding: 20px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; color: var(--text); }
+.close { cursor: pointer; font-size: 20px; }
+.planner-grid { display: grid; grid-template-columns: 1fr 120px 60px; gap: 12px; margin-bottom: 12px; }
+.planner-grid input { padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.delete-btn { background: var(--danger); color: #fff; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+
+/* ---------------------- DATA MANAGEMENT ---------------------- */
+.data-modal-card { background: var(--card); color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>Expense Dashboard</header>
+
+<main class="main">
+  <div class="top-actions">
+    <button class="planner-btn" onclick="openPlanner()">Planner</button>
+    <button class="data-btn" onclick="openDataManagement()">Data Management</button>
+  </div>
+
+  <div class="filter-card" id="dateFilter">
+    <div class="filter-header" onclick="this.parentElement.classList.toggle('open')">
+      <h4>Filter by Date</h4><span>▼</span>
+    </div>
+    <div class="filter-body">
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Start Date</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="filter-group">
+          <label>End Date</label>
+          <input type="date" id="endDate">
+        </div>
+      </div>
+      <button class="apply-btn" onclick="loadDashboard()">Apply</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><h4>Total Spent</h4><h2 id="totalSpent">₹0</h2></div>
+    <div class="kpi"><h4>Total Budget</h4><h2 id="totalBudget">₹0</h2></div>
+    <div class="kpi"><h4>Available</h4><h2 id="availableBudget">₹0</h2></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card"><canvas id="budgetChart"></canvas></div>
+    <div class="card"><canvas id="donutChart"></canvas></div>
+    <div class="card"><canvas id="lineChart"></canvas></div>
+  </div>
+</main>
+
+<!-- Planner Modal -->
+<div class="modal" id="plannerModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Monthly Budget Planner</h3>
+      <span class="close" onclick="closePlanner()">✕</span>
+    </div>
+    <label>Month / Year</label>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <select id="plannerMonth" onchange="loadExistingPlans()" style="flex:1;padding:8px"></select>
+      <select id="plannerYear" onchange="loadExistingPlans()" style="width:100px;padding:8px"></select>
+    </div>
+    <div id="plannerBody"></div>
+    <button class="planner-btn" style="width:100%" onclick="savePlanner()">Save Budget</button>
+  </div>
+</div>
+
+<!-- Data Management Modal -->
+<div class="modal" id="dataModal">
+  <div class="modal-card data-modal-card">
+    <div class="modal-header">
+      <h3>Data Management</h3>
+      <span class="close" onclick="closeDataManagement()">✕</span>
+    </div>
+    <p>Data management content here...</p>
+  </div>
+</div>
+
+<script>
+/* ------------------ USER CONTEXT ------------------ */
+/* const API_DOMAIN = "http://192.168.0.114:9005/"; */
+const API_DOMAIN =  window.location.origin + "/";
+const USER = "{{ user|escapejs }}";
+const MODE = {{ mode }};
+
+function applyMode(mode){
+  const root=document.documentElement;
+  if(mode==1){ // Light
+    root.style.setProperty('--bg','#f4f6f8'); root.style.setProperty('--card','#fff'); root.style.setProperty('--text','#111827'); root.style.setProperty('--muted','#6b7280'); root.style.setProperty('--border','#e5e7eb');
+  } else if(mode==2){ // Medium
+    root.style.setProperty('--bg','#2b2b3c'); root.style.setProperty('--card','#393952'); root.style.setProperty('--text','#e0e0e0'); root.style.setProperty('--muted','#a0a0a0'); root.style.setProperty('--border','#555');
+  } else if(mode==3){ // Dark
+    root.style.setProperty('--bg','#121212'); root.style.setProperty('--card','#1e1e2f'); root.style.setProperty('--text','#e0e0e0'); root.style.setProperty('--muted','#a0a0a0'); root.style.setProperty('--border','#333');
+  }
+}
+applyMode(MODE);
+
+/* ------------------ DASHBOARD ------------------ */
+const DATA_API = `${API_DOMAIN}/dem/api/dummy-dashboard/`;
+let budgetChart=null, donutChart=null, lineChart=null;
+
+function setDefaultDates(){
+  const t = new Date();
+
+  const start = new Date(t.getFullYear(), t.getMonth(), 1);
+  const end = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+
+  document.getElementById('startDate').value =
+    start.toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+  document.getElementById('endDate').value =
+    end.toLocaleDateString('en-CA');
+}
+setDefaultDates();
+
+async function loadDashboard(){
+  const start=document.getElementById('startDate').value;
+  const end=document.getElementById('endDate').value;
+  const url=`${DATA_API}?user=${USER}&start_date=${start}&end_date=${end}`;
+  console.log('Fetching dashboard data:', url);
+  try{
+    const res=await fetch(url);
+    const data=await res.json();
+    console.log('Dashboard payload:', data);
+    document.getElementById('totalBudget').innerText='₹'+(data.totalBudget||0).toLocaleString();
+    document.getElementById('totalSpent').innerText='₹'+(data.totalSpent||0).toLocaleString();
+    document.getElementById('availableBudget').innerText='₹'+(data.availableBudget||0).toLocaleString();
+    if(budgetChart) budgetChart.destroy();
+    if(donutChart) donutChart.destroy();
+    if(lineChart) lineChart.destroy();
+    budgetChart=new Chart(document.getElementById('budgetChart'),{type:'bar',data:data.budgetChart,options:{responsive:true}});
+    donutChart=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:data.donutChart,options:{responsive:true}});
+    lineChart=new Chart(document.getElementById('lineChart'),{type:'line',data:data.lineChart,options:{responsive:true}});
+  }catch(err){console.error('Dashboard Load Error:',err);}
+}
+
+window.addEventListener('DOMContentLoaded', loadDashboard);
+
+/* ------------------ PLANNER ------------------ */
+const API_BASE=`${API_DOMAIN}/dem/api/expense-category-plans/`;
+let categoriesObj={}, existingPlans={};
+
+function formatMonthFirstDay(date){const y=date.getFullYear(); const m=(date.getMonth()+1).toString().padStart(2,'0'); return `${y}-${m}-01`}
+function getSelectedMonthFirstDay(){const m=parseInt(document.getElementById('plannerMonth').value); const y=parseInt(document.getElementById('plannerYear').value); return formatMonthFirstDay(new Date(y,m,1))}
+function openPlanner(){console.log('Opening planner modal'); document.getElementById('plannerModal').classList.add('open'); loadMonthYear(); loadCategories();}
+function closePlanner(){document.getElementById('plannerModal').classList.remove('open');}
+function loadMonthYear(){const monthSelect=document.getElementById('plannerMonth'); const yearSelect=document.getElementById('plannerYear'); monthSelect.innerHTML=''; yearSelect.innerHTML=''; const now=new Date(); for(let m=0;m<12;m++){const opt=document.createElement('option'); opt.value=m; opt.text=new Date(now.getFullYear(),m,1).toLocaleString('default',{month:'long'}); if(m===now.getMonth()) opt.selected=true; monthSelect.appendChild(opt);} for(let y=now.getFullYear()-5;y<=now.getFullYear()+5;y++){const opt=document.createElement('option'); opt.value=y; opt.text=y; if(y===now.getFullYear()) opt.selected=true; yearSelect.appendChild(opt);}}
+function loadCategories(){console.log('Loading categories...'); fetch(`${API_DOMAIN}/dem/api/categories/`).then(res=>res.json()).then(json=>{console.log('Categories fetched:', json); categoriesObj=json.categories; loadExistingPlans()}).catch(err=>{console.error('CATEGORY LOAD ERROR:',err); alert('Failed to load categories')})}
+function loadExistingPlans(){const month=getSelectedMonthFirstDay(); const url=`${API_BASE}?user=${USER}&month=${month}`; console.log('Fetching existing plans:', url); fetch(url).then(res=>res.json()).then(data=>{console.log('Existing plans:', data); existingPlans={}; data.forEach(p=>{ existingPlans[p.category]={id:p.id, planned_amount:p.planned_amount} }); renderPlanner();}).catch(err=>{console.error('LOAD PLANS ERROR:',err); existingPlans={}; renderPlanner();});}
+function renderPlanner(){const body=document.getElementById('plannerBody'); body.innerHTML=''; Object.keys(categoriesObj).forEach(cat=>{const val=existingPlans[cat]? existingPlans[cat].planned_amount : ''; const planId=existingPlans[cat]? existingPlans[cat].id : ''; body.innerHTML+=`<div class="planner-grid"><div><strong>${cat}</strong></div><input type="number" placeholder="₹ Budget" min="0" data-category="${cat}" data-planid="${planId}" value="${val}">${planId?'<button class="delete-btn" onclick="deletePlan(this)">Del</button>':''}</div>`})}
+async function savePlanner(){const month=getSelectedMonthFirstDay(); const inputs=document.querySelectorAll('#plannerBody input'); for(const inp of inputs){const cat=inp.dataset.category; const amt=parseFloat(inp.value); const planId=inp.dataset.planid; if(!amt||amt<=0) continue; const payload={user:USER,month:month,category:cat,planned_amount:amt}; console.log('Saving plan:', payload); try{let res; if(planId){res=await fetch(`${API_BASE}${planId}/`,{method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})}else{res=await fetch(API_BASE,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})} const data=await res.json(); console.log('PLAN SAVED:',data);}catch(err){console.error('SAVE PLAN ERROR:',err)}} alert('Planner saved successfully!'); loadExistingPlans();}
+async function deletePlan(btn){const inp=btn.parentElement.querySelector('input'); const planId=inp.dataset.planid; if(!planId) return; if(!confirm('Are you sure you want to delete this plan?')) return; console.log('Deleting plan:', planId); try{const res=await fetch(`${API_BASE}${planId}/`,{method:'DELETE'}); if(res.ok){console.log('PLAN DELETED:',planId); inp.value=''; inp.dataset.planid=''; btn.remove();}else{console.error('DELETE FAILED:',await res.text());}}catch(err){console.error('DELETE ERROR:',err)}}
+
+/* ------------------ DATA MANAGEMENT ------------------ */
+<!--function openDataManagement(){document.getElementById('dataModal').classList.add('open'); console.log('Opening Data Management modal');}-->
+<!--function closeDataManagement(){document.getElementById('dataModal').classList.remove('open');}-->
+<!-- -->
+ function openDataManagement() {
+    console.log('Navigating to Data Management page');
+    window.location.href = '/dem/data_management';
+}
+
+
+</script>
+
+</body>
+</html>
+<script>
+    window.AppConfig = {
+        user: "{{ request.user.username }}"
+    };
+</script>
+<script src="{% static 'js/aura_standard.js' %}"></script>

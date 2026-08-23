@@ -1,0 +1,15 @@
+# API Settings
+[api]
+user_api_url = "http://127.0.0.1:8000/dem/api/get_user_for_data_log/"
+base_url = "http://127.0.0.1:8000"
+classifier_url = "http://127.0.0.1:8000/dem/api/classification_data/"
+user_api_url1 = "https://auraengine.pythonanywhere.com/dem/api/get_user_for_data_log/"
+base_url1 = "https://auraengine.pythonanywhere.com"
+classifier_url1 = "https://auraengine.pythonanywhere.com/dem/api/classification_data/"
+# Execution Settings
+[settings]
+daily_run = false
+start_day = 21
+end_day = 24
+year_month = "2026-05"
+enable_data_log = true  # This is your True/False flag

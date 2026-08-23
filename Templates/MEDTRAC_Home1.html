@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meal Intelligence Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#0b1120;--card:#111827;--card-soft:#0f172a;--primary:#6366f1;--primary-soft:#818cf8;--accent:#10b981;--text:#f3f4f6;--muted:#94a3b8;--border:#1e293b;--shadow:0 8px 30px rgba(0,0,0,.22);--blue:#38bdf8;--green:#34d399;--orange:#fb923c;--purple:#a855f7}*{box-sizing:border-box;font-family:Inter,system-ui,Arial,sans-serif}body{margin:0;background:linear-gradient(180deg,#020617,#0b1120);color:var(--text);min-height:100vh}.topbar{position:sticky;top:0;z-index:100;backdrop-filter:blur(14px);background:rgba(2,6,23,.78);border-bottom:1px solid var(--border);padding:14px 24px}.brand{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none}.logo{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.38);color:var(--primary-soft);font-weight:800}.brand-sub,.muted,.kpi span{color:var(--muted);font-size:13px}.breadcrumb-line{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700}.slash{color:var(--muted);font-weight:400}.active{color:var(--primary-soft)}.top-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.header-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 18px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer}.header-btn.primary{background:var(--primary);border-color:var(--primary);color:white}
+/* Premium View Raw Data Button Styling */
+.data-link-btn{border:1px solid rgba(56,189,248,0.3);background:linear-gradient(135deg,rgba(56,189,248,0.04),rgba(99,102,241,0.04));color:var(--blue);box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.25s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden}.data-link-btn:hover{background:linear-gradient(135deg,rgba(56,189,248,0.15),rgba(99,102,241,0.15));color:#fff;border-color:var(--blue);box-shadow:0 0 16px rgba(56,189,248,0.25);transform:translateY(-1px)}.main{width:100%;max-width:1440px;margin:0 auto;padding:26px 22px 40px}.kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-bottom:20px}.kpi,.card-panel{background:linear-gradient(145deg,var(--card),#0f172a);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}.kpi{padding:16px;min-width:0}.kpi label{color:var(--muted);font-size:13px}.kpi h2{margin:8px 0 4px;font-size:26px}.grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:20px}.card-panel{padding:16px;margin-bottom:20px;min-width:0}.card-header-row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.card-panel h3{margin:0;font-size:17px}.chart-panel{background:var(--card-soft);border:1px solid var(--border);border-radius:8px;padding:12px;height:280px}.chart-panel canvas{width:100%!important;height:100%!important}.ai-card{background:linear-gradient(135deg,#4338ca,#6366f1);color:white;padding:16px;border-radius:8px;margin-bottom:20px}.ai-card ul,.card-panel ul{margin:0;padding-left:18px}.ai-card li,.card-panel li{margin-bottom:8px}.select-dark,.input-dark{background:var(--card-soft);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none}.select-dark{min-width:140px}.input-dark::-webkit-calendar-picker-indicator{filter:invert(1)}.score{margin-top:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:12px;border-radius:8px}.save-btn{background:var(--accent);border:0;border-radius:8px;color:white;font-weight:700;padding:12px}.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px}.modal-content{background:var(--card);border:1px solid var(--border);border-radius: 18px;color:var(--text)}.nav-tabs{border-bottom:1px solid var(--border)}.nav-tabs .nav-link{color:var(--muted)}.nav-tabs .nav-link.active{background-color:var(--card-soft);color:var(--text);border-color:var(--border) var(--border) transparent}@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr}}@media(max-width:760px){.topbar{align-items:flex-start!important;flex-direction:column;padding:14px}.top-actions,.header-btn,.user-form{width:100%}.top-actions{display:grid;grid-template-columns:1fr}.main{padding:12px}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid{grid-template-columns:1fr}.card-header-row{align-items:stretch;flex-direction:column}.select-dark{width:100%}}
+
+/* Added specifically for the precise functionality of Add Meal Modal */
+.modal-header { color: var(--text); }
+.btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+.form-control, .form-select { background-color: var(--card-soft); border-color: var(--border); color: var(--text); }
+.form-control:focus, .form-select:focus { background-color: var(--card-soft); border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.2); color: var(--text); }
+.form-control::placeholder { color: var(--muted); }
+.form-label, .form-check-label { color: var(--muted); }
+.nav-tabs { border-color: var(--border); }
+.nav-tabs .nav-link { color: var(--muted); border-color: transparent; }
+.nav-tabs .nav-link:hover { border-color: var(--border); color: var(--text); }
+.nav-tabs .nav-link.active { background: var(--card-soft); border-color: var(--border); color: var(--text); }
+.save-btn:hover { background: #059669; color: white; }
+.slider-label { color: var(--primary); font-weight: 700; }
+</style>
+</head>
+<body>
+<header class="topbar d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <a class="brand" href="/">
+    <div class="logo">M</div>
+    <div>
+      <div class="breadcrumb-line"><span>Home</span><span class="slash">/</span><span class="active">Meals</span></div>
+      <span class="brand-sub">Meal Intelligence Dashboard</span>
+    </div>
+  </a>
+  <div class="top-actions">
+    <form method="get" class="user-form d-flex gap-2 align-items-center flex-wrap">
+      <input type="date" name="start_date" class="input-dark" value="{{ start_date }}" aria-label="Start Date">
+      <span class="muted">to</span>
+      <input type="date" name="end_date" class="input-dark" value="{{ end_date }}" aria-label="End Date">
+      <select class="select-dark" name="user" aria-label="Select user">
+        {% for username in users %}
+          <option value="{{ username }}" {% if username == selected_username %}selected{% endif %}>{{ username }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="header-btn primary" style="min-height:38px;">Apply</button>
+    </form>
+    <a href="/medtrac/mealdata" class="header-btn data-link-btn">View Raw Data</a>
+    <button class="header-btn primary" data-bs-toggle="modal" data-bs-target="#mealModal">Add Meal</button>
+  </div>
+</header>
+
+<main class="main">
+  <section class="kpi-grid">
+    <div class="kpi" style="border-color: rgba(99,102,241,.4); background: linear-gradient(145deg, #1e1b4b, #0f172a);">
+      <label style="color:var(--primary-soft)">Average Calories</label>
+      <h2 style="color:white">{{ dashboard.avg_calories }} <span style="font-size:14px">kcal / day</span></h2>
+      <span>Selected timeframe average</span>
+    </div>
+    <div class="kpi"><label>Calories Yesterday</label><h2>{{ dashboard.kpi.calories_yesterday }} kcal</h2><span>Target: {{ dashboard.kpi.target_calories }} kcal</span></div>
+    <div class="kpi"><label>Times Fasting</label><h2>{{ dashboard.kpi.times_fasting }}</h2><span>In selected period</span></div>
+    <div class="kpi"><label>Meals Logged</label><h2>{{ dashboard.kpi.meals_logged_actual }} / {{ dashboard.kpi.meals_logged_expected }}</h2><span>Actual vs Expected</span></div>
+    <div class="kpi"><label>Meal Streak</label><h2>{{ dashboard.kpi.streak }} days</h2><span>Consecutive logging days</span></div>
+  </section>
+
+  <section class="grid">
+    <div>
+      <div class="card-panel">
+        <div class="card-header-row">
+          <div>
+            <h3>Analytics Overview</h3>
+            <div class="muted">Dynamic tracking components monitoring deep metrics</div>
+          </div>
+          <div class="d-flex gap-2">
+            <select class="select-dark" id="specificMealFilter" aria-label="Filter specific meals">
+              <option value="all">All Meals</option>
+              <option value="breakfast">Breakfast Only</option>
+              <option value="lunch">Lunch Only</option>
+              <option value="dinner">Dinner Only</option>
+            </select>
+            <select class="select-dark" id="globalChartFilter" aria-label="Filter chart timeframe">
+              <option value="daily">Daily View</option>
+              <option value="weekly">Weekly View</option>
+              <option value="monthly">Monthly View</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="chart-panel">
+            <h4 class="muted" style="font-size:13px; margin:0 0 8px 0;">Calorie Trend</h4>
+            <canvas id="calorieChart"></canvas>
+          </div>
+          <div class="chart-panel">
+            <h4 class="muted" style="font-size:13px; margin:0 0 8px 0;">Macro Split</h4>
+            <canvas id="macroChart"></canvas>
+          </div>
+          <div class="chart-panel">
+            <h4 class="muted" style="font-size:13px; margin:0 0 8px 0;">Meal Time Pattern</h4>
+            <canvas id="timeChart"></canvas>
+          </div>
+          <div class="chart-panel">
+            <h4 class="muted" style="font-size:13px; margin:0 0 8px 0;">Meal Quantity Pattern</h4>
+            <canvas id="qtyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="ai-card">
+        <h3>AI Period Summary</h3>
+        <ul>{% for item in dashboard.ai_summary %}<li>{{ item }}</li>{% endfor %}</ul>
+        <div class="score"><strong>Health Score: {{ dashboard.health_score }} / 100</strong></div>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<div class="modal fade" id="mealModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content p-3">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Add Today's Meals</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <ul class="nav nav-tabs nav-fill">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#breakfast">Breakfast</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#lunch">Lunch</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dinner">Dinner</button></li>
+        </ul>
+
+        <div class="tab-content mt-4">
+          <div class="tab-pane fade show active" id="breakfast"></div>
+          <div class="tab-pane fade" id="lunch"></div>
+          <div class="tab-pane fade" id="dinner"></div>
+        </div>
+
+        <button onclick="saveAllMeals()" class="btn save-btn w-100 mt-3">Save All Meals</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ dashboard.charts|json_script:"dashboard-charts" }}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const chartData = JSON.parse(document.getElementById("dashboard-charts").textContent);
+
+function formatFloatToTime(value) {
+  if (value === null || value === undefined || value === 0) return "";
+  let hours = Math.floor(value);
+  let minutes = Math.round((value - hours) * 60);
+  let ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12; hours = hours ? hours : 12;
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  return hours + ':' + minutes + ' ' + ampm;
+}
+
+// Injected Add Meal Scripts from code block 1
+const CURRENT_USER = window.CURRENT_USER || "{{ current_user|escapejs }}" || "demo_user";
+
+function mealTemplate(type) {
+  return `
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="skip_${type}">
+      <label class="form-check-label fw-semibold" for="skip_${type}">Skip / Fasting</label>
+    </div>
+
+    <textarea id="food_${type}" class="form-control mb-3" rows="2" placeholder="Food description"></textarea>
+
+    <label class="form-label">Food Type</label>
+    <select id="nonveg_${type}" class="form-select mb-3">
+      <option value="Veg">Veg</option>
+      <option value="Non-Veg">Non-Veg</option>
+    </select>
+
+    <label class="form-label">Meal Quantity</label>
+    <input type="range" min="1" max="10" value="5" class="form-range" id="qty_${type}" oninput="updateLabel('${type}', this.value)">
+    <div class="slider-label mb-3" id="label_${type}">Normal</div>
+
+    <label class="form-label">Timestamp</label>
+    <input type="datetime-local" id="time_${type}" class="form-control mb-3">
+  `;
+}
+
+["breakfast", "lunch", "dinner"].forEach(type => {
+  document.getElementById(type).innerHTML = mealTemplate(type);
+});
+
+function setNow() {
+  const now = new Date();
+  const formatted = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  ["breakfast", "lunch", "dinner"].forEach(type => {
+    document.getElementById(`time_${type}`).value = formatted;
+  });
+}
+
+setNow();
+
+const quantityLabels = {
+  1: "Light Bite",
+  2: "Snack",
+  3: "Small",
+  4: "Moderate",
+  5: "Normal",
+  6: "Filling",
+  7: "Heavy",
+  8: "Very Heavy",
+  9: "Almost Full",
+  10: "Full Stomach"
+};
+
+function updateLabel(type, value) {
+  document.getElementById(`label_${type}`).innerText = quantityLabels[value];
+}
+
+function saveAllMeals() {
+  const meals = ["breakfast", "lunch", "dinner"];
+  const savedMeals = [];
+
+  meals.forEach(type => {
+    const skip = document.getElementById(`skip_${type}`).checked;
+    const food = document.getElementById(`food_${type}`).value.trim();
+    const isNonveg = document.getElementById(`nonveg_${type}`).value;
+    const qty = document.getElementById(`qty_${type}`).value;
+    const time = document.getElementById(`time_${type}`).value;
+
+    if (skip) {
+      savedMeals.push({
+        user: CURRENT_USER,
+        meal_type: type,
+        food_name: "Fasting",
+        quantity: 0,
+        is_nonveg: "Veg",
+        timestamp: time
+      });
+    } else if (food) {
+      savedMeals.push({
+        user: CURRENT_USER,
+        meal_type: type,
+        food_name: food,
+        quantity: qty,
+        is_nonveg: isNonveg,
+        timestamp: time
+      });
+    }
+  });
+
+  if (savedMeals.length === 0) {
+    alert("Nothing to save.");
+    return;
+  }
+
+  fetch("/medtrac/api/meals/create/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meals: savedMeals })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Meal save failed");
+    return res.json();
+  })
+  .then(() => {
+    alert("Meals saved");
+    ["breakfast", "lunch", "dinner"].forEach(type => {
+      document.getElementById(`skip_${type}`).checked = false;
+      document.getElementById(`food_${type}`).value = "";
+      document.getElementById(`qty_${type}`).value = 5;
+      updateLabel(type, 5);
+    });
+    setNow();
+    const modal = bootstrap.Modal.getInstance(document.getElementById("mealModal"));
+    if (modal) modal.hide();
+  })
+  .catch(() => alert("Could not save meals. Please check the API response."));
+}
+
+// Chart Initializations & Functions (Unchanged from target code)
+const chartTextColor="#e5e7eb", chartGridColor="#1f2937";
+Chart.defaults.color=chartTextColor; Chart.defaults.borderColor=chartGridColor;
+const defaultOptions = {responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}};
+const mealColors = { breakfast: "#34d399", lunch: "#38bdf8", dinner: "#fb923c" };
+
+// Calorie Chart
+const calorieChart = new Chart(document.getElementById("calorieChart"), {
+  type: "bar",
+  data: { labels: chartData.daily.labels, datasets: [{ data: chartData.daily.calorie_all, backgroundColor: "#6366f1", borderRadius: 4 }] },
+  options: { ...defaultOptions, scales:{ x:{grid:{display:false}}, y:{beginAtZero:true} } }
+});
+
+// Macro Chart
+const macroChart = new Chart(document.getElementById("macroChart"), {
+  type: "doughnut",
+  data: { labels: ["Protein", "Carbs", "Fats", "Fiber"], datasets: [{ data: chartData.daily.macro_all, backgroundColor: ["#34d399", "#38bdf8", "#fb923c", "#a855f7"], borderColor: "#111827", borderWidth: 2 }] },
+  options: { ...defaultOptions, cutout: "65%", plugins:{ legend:{ display:true, position:"right", labels:{color:chartTextColor, usePointStyle:true} } } }
+});
+
+const segmentRules = {
+  borderColor: ctx => ctx.p0.skip || ctx.p1.skip ? 'rgba(148, 163, 184, 0.25)' : undefined
+};
+
+let timeDatasets = {
+  breakfast: { label: "Breakfast", data: chartData.daily.time_breakfast, borderColor: mealColors.breakfast, tension: 0.2, spanGaps: true, segment: segmentRules, pointBackgroundColor: mealColors.breakfast },
+  lunch: { label: "Lunch", data: chartData.daily.time_lunch, borderColor: mealColors.lunch, tension: 0.2, spanGaps: true, segment: segmentRules, pointBackgroundColor: mealColors.lunch },
+  dinner: { label: "Dinner", data: chartData.daily.time_dinner, borderColor: mealColors.dinner, tension: 0.2, spanGaps: true, segment: segmentRules, pointBackgroundColor: mealColors.dinner }
+};
+
+let qtyDatasets = {
+  breakfast: { label: "Breakfast", data: chartData.daily.qty_breakfast, backgroundColor: mealColors.breakfast, borderRadius: 4 },
+  lunch: { label: "Lunch", data: chartData.daily.qty_lunch, backgroundColor: mealColors.lunch, borderRadius: 4 },
+  dinner: { label: "Dinner", data: chartData.daily.qty_dinner, backgroundColor: mealColors.dinner, borderRadius: 4 }
+};
+
+// Time Line Chart
+const timeChart = new Chart(document.getElementById("timeChart"), {
+  type: "line",
+  data: { labels: chartData.daily.high_res_labels, datasets: [timeDatasets.breakfast, timeDatasets.lunch, timeDatasets.dinner] },
+  options: {
+    ...defaultOptions,
+    plugins: {
+      legend: { display: true, position: 'top', labels: { color: chartTextColor, boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: function(c) { return c.dataset.label + ": " + formatFloatToTime(c.parsed.y); } } }
+    },
+    scales:{ x:{grid:{display:false}}, y:{ min:0, max:24, ticks:{ callback: function(v) { return formatFloatToTime(v); } } } }
+  }
+});
+
+// Quantity Chart
+const qtyChart = new Chart(document.getElementById("qtyChart"), {
+  type: "bar",
+  data: { labels: chartData.daily.high_res_labels, datasets: [qtyDatasets.breakfast, qtyDatasets.lunch, qtyDatasets.dinner] },
+  options: {
+    ...defaultOptions,
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const datasetLabel = context.dataset.label || '';
+            const value = context.parsed.y;
+            const period = document.getElementById("globalChartFilter").value;
+            const idx = context.dataIndex;
+            const activePeriodData = chartData[period];
+
+            let itemDetails = "Not logged";
+            if (datasetLabel === "Breakfast" && activePeriodData.food_breakfast) itemDetails = activePeriodData.food_breakfast[idx];
+            if (datasetLabel === "Lunch" && activePeriodData.food_lunch) itemDetails = activePeriodData.food_lunch[idx];
+            if (datasetLabel === "Dinner" && activePeriodData.food_dinner) itemDetails = activePeriodData.food_dinner[idx];
+
+            return `${datasetLabel}: ${value} unit(s) [${itemDetails}]`;
+          }
+        }
+      }
+    },
+    scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true } }
+  }
+});
+
+function updateDashboardCharts() {
+  const period = document.getElementById("globalChartFilter").value;
+  const selectedMeal = document.getElementById("specificMealFilter").value;
+  const data = chartData[period];
+
+  calorieChart.data.labels = data.labels;
+  calorieChart.data.datasets[0].data = data[`calorie_${selectedMeal}`];
+  macroChart.data.datasets[0].data = data[`macro_${selectedMeal}`];
+
+  calorieChart.update();
+  macroChart.update();
+
+  timeChart.data.labels = data.high_res_labels;
+  qtyChart.data.labels = data.high_res_labels;
+
+  let activeTime = [];
+  let activeQty = [];
+
+  ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+      timeDatasets[meal].data = data[`time_${meal}`];
+      qtyDatasets[meal].data = data[`qty_${meal}`];
+
+      if (selectedMeal === 'all' || selectedMeal === meal) {
+          activeTime.push(timeDatasets[meal]);
+          activeQty.push(qtyDatasets[meal]);
+      }
+  });
+
+  timeChart.data.datasets = activeTime;
+  qtyChart.data.datasets = activeQty;
+
+  timeChart.update();
+  qtyChart.update();
+}
+
+document.getElementById("globalChartFilter").addEventListener("change", updateDashboardCharts);
+document.getElementById("specificMealFilter").addEventListener("change", updateDashboardCharts);
+</script>
+</body>
+</html>

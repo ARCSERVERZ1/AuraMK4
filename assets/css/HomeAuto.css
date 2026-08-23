@@ -1,0 +1,1306 @@
+/* ==========================================================
+   HomeAuto.css
+   Part 1
+   Theme + Layout + Header + Rooms
+========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root{
+
+    --bg:#03060a;
+
+    --surface:rgba(13,19,29,.65);
+
+    --surface-hover:rgba(23,32,46,.9);
+
+    --line:rgba(255,255,255,.08);
+
+    --text:#f1f5f9;
+
+    --muted:#94a3b8;
+
+    --blue:#0ea5e9;
+
+    --blueGlow:rgba(14,165,233,.30);
+
+    --green:#10b981;
+
+    --red:#ef4444;
+
+    --orange:#f59e0b;
+
+    --radius:16px;
+
+}
+
+
+*{
+
+    margin:0;
+
+    padding:0;
+
+    box-sizing:border-box;
+
+}
+
+html,
+body{
+
+    width:100%;
+
+    min-height:100vh;
+
+    font-family:'Inter',sans-serif;
+
+    color:var(--text);
+
+    background:
+
+    radial-gradient(circle at top left,
+    rgba(14,165,233,.15),
+    transparent 40rem),
+
+    radial-gradient(circle at bottom right,
+    rgba(139,92,246,.12),
+    transparent 40rem),
+
+    var(--bg);
+
+    background-attachment:fixed;
+
+}
+
+
+/* ==========================================================
+   APP
+========================================================== */
+
+.app-container{
+
+    width:min(1450px,100%);
+
+    margin:auto;
+
+    padding:24px;
+
+    padding-bottom:120px;
+
+}
+
+
+/* ==========================================================
+   HEADER
+========================================================== */
+
+.top-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:20px;
+
+    margin-bottom:30px;
+
+}
+
+
+.brand{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+
+.brand-logo{
+
+    width:52px;
+
+    height:52px;
+
+    border-radius:14px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-weight:700;
+
+    font-size:18px;
+
+    color:#fff;
+
+    background:linear-gradient(
+        135deg,
+        #0ea5e9,
+        #2563eb
+    );
+
+    box-shadow:0 8px 24px var(--blueGlow);
+
+}
+
+
+.brand h3{
+
+    margin:0;
+
+    font-size:22px;
+
+    font-weight:600;
+
+}
+
+
+.brand small{
+
+    color:var(--muted);
+
+    font-size:13px;
+
+}
+
+
+.header-actions{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:14px;
+
+}
+
+
+/* ==========================================================
+   HOUSE DROPDOWN
+========================================================== */
+
+#houseSelector{
+
+    width:240px;
+
+    height:46px;
+
+    border-radius:12px;
+
+    background:rgba(255,255,255,.04);
+
+    border:1px solid var(--line);
+
+    color:white;
+
+    transition:.25s;
+
+}
+
+#houseSelector option{
+
+    background:#0b1220;
+
+    color:white;
+
+}
+
+#houseSelector:focus{
+
+    border-color:var(--blue);
+
+    box-shadow:0 0 0 3px var(--blueGlow);
+
+}
+
+
+/* ==========================================================
+   BUTTON
+========================================================== */
+
+.btn-primary{
+
+    height:46px;
+
+    border:none;
+
+    border-radius:12px;
+
+    background:linear-gradient(
+        135deg,
+        #0ea5e9,
+        #2563eb
+    );
+
+    padding:0 20px;
+
+    font-weight:600;
+
+    transition:.25s;
+
+    box-shadow:0 5px 18px var(--blueGlow);
+
+}
+
+.btn-primary:hover{
+
+    transform:translateY(-2px);
+
+    box-shadow:0 10px 28px rgba(14,165,233,.35);
+
+}
+
+
+/* ==========================================================
+   TITLES
+========================================================== */
+
+.section-title{
+
+    margin-bottom:18px;
+
+}
+
+.section-title h4{
+
+    font-size:20px;
+
+    font-weight:600;
+
+}
+
+
+/* ==========================================================
+   ROOM SECTION
+========================================================== */
+
+.room-section{
+
+    background:var(--surface);
+
+    border:1px solid var(--line);
+
+    border-radius:var(--radius);
+
+    backdrop-filter:blur(18px);
+
+    padding:20px;
+
+    margin-bottom:24px;
+
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+
+}
+
+
+/* ==========================================================
+   ROOM CAROUSEL
+========================================================== */
+
+.room-carousel{
+
+    display:flex;
+
+    gap:15px;
+
+    overflow-x:auto;
+
+    overflow-y:hidden;
+
+    padding-bottom:10px;
+
+}
+
+
+/* ==========================================================
+   ROOM CARD
+========================================================== */
+
+.room-card{
+
+    min-width:180px;
+
+    padding:18px;
+
+    border-radius:14px;
+
+    background:rgba(255,255,255,.03);
+
+    border:1px solid var(--line);
+
+    cursor:pointer;
+
+    transition:.30s;
+
+    position:relative;
+
+    flex-shrink:0;
+
+}
+
+.room-card:hover{
+
+    background:var(--surface-hover);
+
+    transform:translateY(-4px);
+
+}
+
+.room-card.active{
+
+    border-color:var(--blue);
+
+    background:linear-gradient(
+        135deg,
+        rgba(14,165,233,.12),
+        rgba(37,99,235,.06)
+    );
+
+    box-shadow:0 10px 24px var(--blueGlow);
+
+}
+
+.room-card.active::before{
+
+    content:"";
+
+    position:absolute;
+
+    left:0;
+
+    top:0;
+
+    bottom:0;
+
+    width:4px;
+
+    border-radius:10px;
+
+    background:var(--blue);
+
+}
+
+
+.room-symbol{
+
+    width:42px;
+
+    height:42px;
+
+    border-radius:12px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin-bottom:14px;
+
+    font-size:18px;
+
+    font-weight:700;
+
+    color:var(--blue);
+
+    background:rgba(14,165,233,.15);
+
+}
+
+
+.room-card strong{
+
+    display:block;
+
+    font-size:16px;
+
+    margin-bottom:6px;
+
+}
+
+
+.room-card span{
+
+    color:var(--muted);
+
+    font-size:13px;
+
+}
+
+
+/* ==========================================================
+   SCROLLBAR
+========================================================== */
+
+.room-carousel::-webkit-scrollbar{
+
+    height:8px;
+
+}
+
+.room-carousel::-webkit-scrollbar-track{
+
+    background:transparent;
+
+}
+
+.room-carousel::-webkit-scrollbar-thumb{
+
+    background:rgba(255,255,255,.18);
+
+    border-radius:20px;
+
+}
+
+.room-carousel::-webkit-scrollbar-thumb:hover{
+
+    background:rgba(255,255,255,.30);
+
+}
+/* ==========================================================
+   DEVICE SECTION
+========================================================== */
+
+.device-section{
+
+    background:var(--surface);
+
+    border:1px solid var(--line);
+
+    border-radius:var(--radius);
+
+    backdrop-filter:blur(18px);
+
+    padding:24px;
+
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+
+}
+
+
+/* ==========================================================
+   DEVICE GRID
+========================================================== */
+
+.device-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+
+    gap:20px;
+
+}
+
+
+/* ==========================================================
+   DEVICE CARD
+========================================================== */
+
+.device-card{
+
+    position:relative;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:space-between;
+
+    min-height:220px;
+
+    padding:20px;
+
+    border-radius:16px;
+
+    border:1px solid var(--line);
+
+    background:rgba(255,255,255,.03);
+
+    transition:.30s;
+
+    overflow:hidden;
+
+}
+
+.device-card:hover{
+
+    transform:translateY(-5px);
+
+    background:var(--surface-hover);
+
+    border-color:rgba(255,255,255,.18);
+
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+
+}
+
+
+/* ==========================================================
+   CARD HEADER
+========================================================== */
+
+.device-top{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-start;
+
+    gap:15px;
+
+    margin-bottom:18px;
+
+}
+
+.device-top h3{
+
+    margin:0;
+
+    font-size:18px;
+
+    font-weight:600;
+
+}
+
+
+/* ==========================================================
+   DEVICE ICON
+========================================================== */
+
+.device-icon{
+
+    width:52px;
+
+    height:52px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    border-radius:14px;
+
+    font-size:24px;
+
+    background:rgba(255,255,255,.05);
+
+}
+
+
+/* ==========================================================
+   STATUS
+========================================================== */
+
+.status-badge{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    margin-top:8px;
+
+    color:var(--green);
+
+    font-size:13px;
+
+    font-weight:500;
+
+}
+
+.status-dot{
+
+    width:8px;
+
+    height:8px;
+
+    border-radius:50%;
+
+    background:var(--green);
+
+    box-shadow:0 0 10px var(--green);
+
+}
+
+
+/* ==========================================================
+   CARD ACTIONS
+========================================================== */
+
+.card-actions{
+
+    position:absolute;
+
+    right:16px;
+
+    top:16px;
+
+    display:flex;
+
+    gap:8px;
+
+    opacity:0;
+
+    transition:.25s;
+
+}
+
+.device-card:hover .card-actions{
+
+    opacity:1;
+
+}
+
+
+/* ==========================================================
+   ICON BUTTONS
+========================================================== */
+
+.btn-icon{
+
+    width:34px;
+
+    height:34px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    border-radius:8px;
+
+    border:1px solid var(--line);
+
+    background:rgba(255,255,255,.04);
+
+    color:var(--muted);
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+.btn-icon:hover{
+
+    transform:scale(1.08);
+
+}
+
+.edit-btn:hover{
+
+    color:var(--blue);
+
+    border-color:var(--blue);
+
+    background:rgba(14,165,233,.12);
+
+}
+
+.delete-btn:hover{
+
+    color:var(--red);
+
+    border-color:var(--red);
+
+    background:rgba(239,68,68,.12);
+
+}
+
+
+/* ==========================================================
+   COMMAND BUTTONS
+========================================================== */
+
+.command-row{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:10px;
+
+    margin-top:auto;
+
+}
+
+.command{
+
+    flex:1;
+
+    min-width:80px;
+
+    height:42px;
+
+    border:none;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    color:white;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    background:rgba(255,255,255,.06);
+
+    border:1px solid var(--line);
+
+    transition:.25s;
+
+}
+
+.command:hover{
+
+    transform:translateY(-2px);
+
+    background:rgba(14,165,233,.18);
+
+    border-color:var(--blue);
+
+}
+
+.command:disabled{
+
+    opacity:.6;
+
+    cursor:not-allowed;
+
+}
+
+
+/* ==========================================================
+   LOADING BUTTON
+========================================================== */
+
+.command .spinner-border{
+
+    width:16px;
+
+    height:16px;
+
+}
+
+
+/* ==========================================================
+   SUCCESS CARD
+========================================================== */
+
+.device-success{
+
+    animation:deviceFlash .9s;
+
+}
+
+@keyframes deviceFlash{
+
+    0%{
+
+        box-shadow:0 0 0 rgba(16,185,129,0);
+
+    }
+
+    50%{
+
+        box-shadow:0 0 28px rgba(16,185,129,.8);
+
+        border-color:var(--green);
+
+    }
+
+    100%{
+
+        box-shadow:none;
+
+    }
+
+}
+
+
+/* ==========================================================
+   EMPTY STATE
+========================================================== */
+
+.empty-state{
+
+    padding:60px 20px;
+
+    text-align:center;
+
+    color:var(--muted);
+
+    font-size:15px;
+
+}
+
+.empty-state i{
+
+    font-size:52px;
+
+    display:block;
+
+    margin-bottom:15px;
+
+    opacity:.6;
+
+}
+/* ==========================================================
+   MODAL
+========================================================== */
+
+.modal-content{
+
+    background:#0b1019;
+
+    color:white;
+
+    border-radius:18px;
+
+    border:1px solid var(--line);
+
+    backdrop-filter:blur(20px);
+
+}
+
+.modal-header{
+
+    border-bottom:1px solid var(--line);
+
+}
+
+.modal-footer{
+
+    border-top:1px solid var(--line);
+
+}
+
+.modal-title{
+
+    font-size:18px;
+
+    font-weight:600;
+
+}
+
+.btn-close{
+
+    filter:invert(1);
+
+}
+
+
+/* ==========================================================
+   FORM
+========================================================== */
+
+.form-label{
+
+    color:var(--muted);
+
+    font-size:13px;
+
+    font-weight:600;
+
+    margin-bottom:6px;
+
+}
+
+.form-control,
+.form-select{
+
+    background:rgba(255,255,255,.04);
+
+    border:1px solid var(--line);
+
+    color:white;
+
+    border-radius:10px;
+
+    height:44px;
+
+}
+
+.form-control:focus,
+.form-select:focus{
+
+    background:rgba(255,255,255,.06);
+
+    color:white;
+
+    border-color:var(--blue);
+
+    box-shadow:0 0 0 3px var(--blueGlow);
+
+}
+
+.form-control::placeholder{
+
+    color:#94a3b8;
+
+}
+
+.form-check-input{
+
+    cursor:pointer;
+
+}
+
+.form-check-label{
+
+    color:white;
+
+}
+
+
+/* ==========================================================
+   TELEMETRY CONSOLE
+========================================================== */
+
+.telemetry-console{
+
+    position:fixed;
+
+    left:50%;
+
+    bottom:18px;
+
+    transform:translateX(-50%);
+
+    width:min(1400px,calc(100% - 30px));
+
+    padding:14px 18px;
+
+    border-radius:14px;
+
+    border:1px solid rgba(14,165,233,.25);
+
+    background:rgba(5,10,18,.92);
+
+    backdrop-filter:blur(20px);
+
+    z-index:9999;
+
+    box-shadow:0 -10px 35px rgba(0,0,0,.45);
+
+}
+
+.console-title{
+
+    color:var(--blue);
+
+    font-size:12px;
+
+    font-weight:700;
+
+    text-transform:uppercase;
+
+    margin-bottom:6px;
+
+    letter-spacing:.6px;
+
+}
+
+#console-output{
+
+    color:#6EE7B7;
+
+    font-size:13px;
+
+    font-family:Consolas,monospace;
+
+    word-break:break-word;
+
+}
+
+
+/* ==========================================================
+   GLASS EFFECT
+========================================================== */
+
+.glass{
+
+    background:rgba(255,255,255,.03);
+
+    border:1px solid rgba(255,255,255,.06);
+
+    backdrop-filter:blur(18px);
+
+}
+
+
+/* ==========================================================
+   SHADOWS
+========================================================== */
+
+.shadow-blue{
+
+    box-shadow:0 10px 30px rgba(14,165,233,.20);
+
+}
+
+.shadow-green{
+
+    box-shadow:0 10px 30px rgba(16,185,129,.18);
+
+}
+
+.shadow-red{
+
+    box-shadow:0 10px 30px rgba(239,68,68,.18);
+
+}
+
+
+/* ==========================================================
+   FADE IN
+========================================================== */
+
+.fade-in{
+
+    animation:fadeIn .35s ease;
+
+}
+
+@keyframes fadeIn{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:none;
+
+    }
+
+}
+
+
+/* ==========================================================
+   SCALE IN
+========================================================== */
+
+.scale-in{
+
+    animation:scaleIn .25s ease;
+
+}
+
+@keyframes scaleIn{
+
+    from{
+
+        opacity:0;
+
+        transform:scale(.95);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:scale(1);
+
+    }
+
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+@media (max-width:992px){
+
+    .top-header{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+    }
+
+    .header-actions{
+
+        width:100%;
+
+        flex-wrap:wrap;
+
+    }
+
+    #houseSelector{
+
+        width:100%;
+
+    }
+
+    .btn-primary{
+
+        width:100%;
+
+    }
+
+    .device-grid{
+
+        grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+
+    }
+
+}
+
+
+@media (max-width:768px){
+
+    .app-container{
+
+        padding:15px;
+
+        padding-bottom:130px;
+
+    }
+
+    .room-card{
+
+        min-width:160px;
+
+    }
+
+    .device-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .device-card{
+
+        min-height:auto;
+
+    }
+
+    .telemetry-console{
+
+        width:calc(100% - 20px);
+
+        bottom:10px;
+
+    }
+
+}
+
+
+@media (max-width:480px){
+
+    .brand h3{
+
+        font-size:18px;
+
+    }
+
+    .brand-logo{
+
+        width:46px;
+
+        height:46px;
+
+        font-size:16px;
+
+    }
+
+    .room-card{
+
+        min-width:145px;
+
+    }
+
+    .command{
+
+        min-width:100%;
+
+    }
+
+}
+
+
+/* ==========================================================
+   UTILITIES
+========================================================== */
+
+.hidden{
+
+    display:none !important;
+
+}
+
+.pointer{
+
+    cursor:pointer;
+
+}
+
+.text-muted{
+
+    color:var(--muted)!important;
+
+}
+
+.text-success{
+
+    color:var(--green)!important;
+
+}
+
+.text-danger{
+
+    color:var(--red)!important;
+
+}
+
+.w-100{
+
+    width:100%;
+
+}
+
+.mt-auto{
+
+    margin-top:auto;
+
+}
+
+.mb-0{
+
+    margin-bottom:0;
+
+}
+
+.rounded-xl{
+
+    border-radius:16px;
+
+}
+
+
+/* ==========================================================
+   END
+========================================================== */
