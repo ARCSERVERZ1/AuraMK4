@@ -187,7 +187,7 @@ def location_log_dashboard(request):
     return render(request, "APPG_LocationsHome.html", context)
 
 def jarvis(request):
-    return render(request, "jarvis.html")
+    return render(request, "Jarvis.html")
 
 
 class DeviceTelemetryViewSet(viewsets.ModelViewSet):
