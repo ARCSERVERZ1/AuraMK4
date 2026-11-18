@@ -61,3 +61,31 @@ class LocationLog(models.Model):
 
     def __str__(self):
         return self.place_name
+
+
+from django.db import models
+
+
+class DeviceTelemetry(models.Model):
+    username = models.CharField(max_length=150)
+    device_model = models.CharField(max_length=100)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    is_charging = models.BooleanField(default=False)
+    battery_level = models.IntegerField(null=True, blank=True)
+    signal_strength = models.IntegerField(null=True, blank=True)
+    network_type = models.CharField(max_length=50, blank=True, null=True)
+    os_version = models.CharField(max_length=50, blank=True, null=True)
+    locale = models.CharField(max_length=20, blank=True, null=True)
+    uptime_ms = models.BigIntegerField(null=True, blank=True)
+    screen_brightness = models.IntegerField(null=True, blank=True)
+    sos_flag = models.BooleanField(default=False)
+    Remarks = models.CharField(max_length=250, blank=True, null=True)
+    status = models.IntegerField(default=1)
+
+    # Timestamps
+    timestamp = models.DateTimeField()  # Sent from the Android app
+    logged_at = models.DateTimeField(auto_now_add=True)  # Logged automatically by Django server time
+
+    def __str__(self):
+        return f"{self.username} - {self.device_model} (SOS: {self.sos_flag})"

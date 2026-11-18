@@ -5,4 +5,5 @@ from .models import *
 admin.site.register(HomeAutomation)
 admin.site.register(UserHouseMapping)
 admin.site.register(LocationLog)
+admin.site.register(DeviceTelemetry)
 

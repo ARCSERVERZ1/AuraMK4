@@ -185,3 +185,11 @@ def location_log_dashboard(request):
     }
     # return render(request, 'location_dashboard.html', context)
     return render(request, "APPG_LocationsHome.html", context)
+
+def jarvis(request):
+    return render(request, "jarvis.html")
+
+
+class DeviceTelemetryViewSet(viewsets.ModelViewSet):
+    queryset = DeviceTelemetry.objects.all().order_by('-logged_at')
+    serializer_class = DeviceTelemetrySerializer
