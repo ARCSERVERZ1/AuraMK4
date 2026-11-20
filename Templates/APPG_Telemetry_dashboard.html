@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telemetry Dashboard</title>
+
+  <!-- Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Leaflet CSS & JS (CartoDB Dark Matter Map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <style>
+    /* Dark theme base & scrollbars */
+    body { background-color: #0b0f19; color: #f3f4f6; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+    /* Pulsing animations for active SOS badges & map markers */
+    @keyframes sosPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+    .sos-pulse { animation: sosPulse 1.8s infinite; }
+
+    @keyframes radarPing {
+      0% { transform: scale(0.85); opacity: 0.85; }
+      80%, 100% { transform: scale(2.2); opacity: 0; }
+    }
+    .radar-ping { animation: radarPing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+    /* Leaflet Dark Theme Overrides */
+    .leaflet-container { background: #0b0f19 !important; font-family: 'Inter', sans-serif !important; }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+      background: #111827 !important;
+      color: #f3f4f6 !important;
+      border: 1px solid #1f2937;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.75) !important;
+    }
+    .leaflet-popup-content-wrapper { border-radius: 0.75rem !important; padding: 0 !important; }
+    .leaflet-popup-content { margin: 0 !important; min-width: 230px; }
+    .leaflet-popup-close-button { color: #9ca3af !important; padding: 6px 8px 0 0 !important; font-size: 18px !important; }
+    .leaflet-popup-close-button:hover { color: #ffffff !important; }
+    .leaflet-control-zoom a { background: #111827 !important; color: #e5e7eb !important; border-color: #1f2937 !important; }
+    .leaflet-control-zoom a:hover { background: #1f2937 !important; color: #22d3ee !important; }
+    .leaflet-control-attribution { background: rgba(11, 15, 25, 0.85) !important; color: #6b7280 !important; font-size: 10px !important; }
+    .leaflet-control-attribution a { color: #9ca3af !important; }
+
+    /* Make native date picker icon legible on dark background */
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.82); cursor: pointer; }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-gray-100 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- ==================== MINIMAL TOP NAVIGATION BAR ==================== -->
+  <header class="sticky top-0 z-30 bg-[#0b0f19]/95 backdrop-blur-md border-b border-[#1f2937]">
+    <div class="max-w-[1520px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <!-- 3 Tab Buttons -->
+      <nav class="flex items-center gap-1 bg-[#111827] p-1 rounded-xl border border-[#1f2937] overflow-x-auto max-w-full" aria-label="Views">
+        <button id="tab-latest" onclick="switchTab('latest')"
+          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap border border-transparent">
+          Latest 20
+        </button>
+        <button id="tab-tracker" onclick="switchTab('tracker')"
+          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap border border-transparent">
+          Family Tracker (7d)
+        </button>
+        <button id="tab-history" onclick="switchTab('history')"
+          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap border border-transparent">
+          History
+        </button>
+      </nav>
+
+      <!-- Compact Refresh Button -->
+      <button onclick="refreshCurrentTab()" title="Refresh current view"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#111827] hover:bg-[#1f2937] text-gray-200 border border-[#1f2937] hover:border-gray-600 text-xs sm:text-sm font-medium transition shrink-0">
+        <svg id="refresh-spinner" class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+        </svg>
+        <span class="hidden sm:inline">Refresh</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <main class="flex-1 max-w-[1520px] w-full mx-auto px-4 sm:px-6 py-5">
+
+    <!-- ==================== TAB 1: LATEST 20 ==================== -->
+    <section id="view-latest" class="space-y-5">
+      <!-- Inline Error Banner -->
+      <div id="latest-error" class="hidden rounded-xl bg-red-950/40 border border-red-500/40 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <span id="latest-error-msg" class="text-xs sm:text-sm text-red-200">Failed to load telemetry records.</span>
+        <button onclick="loadLatest()" class="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-medium text-red-200 transition">
+          Retry
+        </button>
+      </div>
+
+      <!-- 3-Column KPI Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 sm:p-5">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Loaded</p>
+          <p id="kpi-total" class="mt-2 text-2xl sm:text-3xl font-bold font-mono text-white">0</p>
+        </div>
+
+        <div id="kpi-sos-card" class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 sm:p-5 transition-colors">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Active SOS</p>
+          <p id="kpi-sos" class="mt-2 text-2xl sm:text-3xl font-bold font-mono text-white">0</p>
+        </div>
+
+        <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 sm:p-5">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Unique Users</p>
+          <p id="kpi-users" class="mt-2 text-2xl sm:text-3xl font-bold font-mono text-white">0</p>
+        </div>
+      </div>
+
+      <!-- Latest 20 Card -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden">
+        <!-- Compact Filter Bar -->
+        <div class="p-4 border-b border-[#1f2937] flex flex-wrap items-center justify-between gap-3">
+          <input id="latest-search" type="text" placeholder="Search username, device, network, remarks..."
+            class="flex-1 min-w-[220px] max-w-md px-3.5 py-2 bg-[#0b0f19] border border-[#1f2937] rounded-lg text-xs sm:text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500/60" />
+
+          <button id="latest-sos-btn" type="button" onclick="toggleLatestSos()" aria-pressed="false"
+            class="px-3.5 py-2 rounded-lg bg-[#0b0f19] border border-[#1f2937] text-xs sm:text-sm font-medium text-gray-300 hover:border-red-500/50 transition">
+            SOS Only
+          </button>
+        </div>
+
+        <!-- Data Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-[#0b0f19]/80 border-b border-[#1f2937] text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <th class="py-3 px-4">User &amp; Device</th>
+                <th class="py-3 px-4">Battery</th>
+                <th class="py-3 px-4">Signal &amp; Network</th>
+                <th class="py-3 px-4">Status / SOS</th>
+                <th class="py-3 px-4">Location</th>
+                <th class="py-3 px-4">Logged At</th>
+              </tr>
+            </thead>
+            <tbody id="latest-tbody" class="divide-y divide-[#1f2937]/80 text-sm"></tbody>
+          </table>
+        </div>
+
+        <!-- Loading & Empty States -->
+        <div id="latest-loading" class="hidden py-12 text-center">
+          <div class="w-7 h-7 mx-auto rounded-full border-2 border-gray-700 border-t-cyan-400 animate-spin mb-2.5"></div>
+          <p class="text-xs text-gray-400">Loading records...</p>
+        </div>
+        <div id="latest-empty" class="hidden py-12 text-center">
+          <p class="text-sm font-medium text-gray-300">No telemetry records found</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: FAMILY TRACKER (7d) ==================== -->
+    <section id="view-tracker" class="hidden space-y-4">
+      <!-- Inline Error Banner -->
+      <div id="tracker-error" class="hidden rounded-xl bg-red-950/40 border border-red-500/40 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <span id="tracker-error-msg" class="text-xs sm:text-sm text-red-200">Failed to load family tracker locations.</span>
+        <button onclick="loadTracker()" class="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-medium text-red-200 transition">
+          Retry
+        </button>
+      </div>
+
+      <!-- Split Layout: Left User Cards + Right Full-Height Dark Map -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <!-- Left Sidebar -->
+        <div class="lg:col-span-4 flex flex-col gap-3 max-h-[72vh] overflow-y-auto pr-0.5">
+          <div id="tracker-loading" class="hidden bg-[#111827] border border-[#1f2937] rounded-xl py-12 text-center">
+            <div class="w-7 h-7 mx-auto rounded-full border-2 border-gray-700 border-t-cyan-400 animate-spin mb-2.5"></div>
+            <p class="text-xs text-gray-400">Loading locations...</p>
+          </div>
+          <div id="tracker-cards" class="space-y-3"></div>
+        </div>
+
+        <!-- Right Map Panel -->
+        <div class="lg:col-span-8 relative bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden min-h-[480px] lg:h-[72vh]">
+          <div id="tracker-map" class="w-full h-full min-h-[480px] z-0"></div>
+
+          <!-- Centered Empty Overlay when no GPS coordinates exist -->
+          <div id="tracker-map-empty" class="hidden absolute inset-0 z-[400] pointer-events-none flex items-center justify-center p-4">
+            <div class="bg-[#111827]/90 backdrop-blur-sm border border-[#1f2937] rounded-xl px-5 py-3.5 text-center shadow-xl">
+              <p class="text-sm font-medium text-gray-300">No telemetry records found</p>
+              <p class="text-xs text-gray-500 mt-0.5">No GPS locations available in the last 7 days.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: HISTORY ==================== -->
+    <section id="view-history" class="hidden space-y-4">
+      <!-- Inline Error Banner -->
+      <div id="history-error" class="hidden rounded-xl bg-red-950/40 border border-red-500/40 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <span id="history-error-msg" class="text-xs sm:text-sm text-red-200">Failed to load history records.</span>
+        <button onclick="loadHistory()" class="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-medium text-red-200 transition">
+          Retry
+        </button>
+      </div>
+
+      <!-- Filter Bar Card -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-4 space-y-3.5">
+        <!-- Date Range & Quick Presets Row -->
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label for="history-start" class="block text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">Start Date</label>
+              <input id="history-start" type="date"
+                class="px-3 py-2 bg-[#0b0f19] border border-[#1f2937] rounded-lg text-xs sm:text-sm font-mono text-gray-100 focus:outline-none focus:border-cyan-500/60" />
+            </div>
+            <div>
+              <label for="history-end" class="block text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1">End Date</label>
+              <input id="history-end" type="date"
+                class="px-3 py-2 bg-[#0b0f19] border border-[#1f2937] rounded-lg text-xs sm:text-sm font-mono text-gray-100 focus:outline-none focus:border-cyan-500/60" />
+            </div>
+            <button onclick="loadHistory()"
+              class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs sm:text-sm font-medium transition">
+              Fetch
+            </button>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="applyPreset('today')" data-preset="today"
+              class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0b0f19] border border-[#1f2937] text-gray-300 hover:border-cyan-500/50 transition">
+              Today
+            </button>
+            <button onclick="applyPreset('7d')" data-preset="7d"
+              class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0b0f19] border border-[#1f2937] text-gray-300 hover:border-cyan-500/50 transition">
+              Last 7 Days
+            </button>
+            <button onclick="applyPreset('30d')" data-preset="30d"
+              class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0b0f19] border border-[#1f2937] text-gray-300 hover:border-cyan-500/50 transition">
+              Last 30 Days
+            </button>
+          </div>
+        </div>
+
+        <!-- Client Search, SOS Toggle & Export CSV Row -->
+        <div class="pt-3 border-t border-[#1f2937] flex flex-wrap items-center justify-between gap-3">
+          <input id="history-search" type="text" placeholder="Filter loaded records by username, device, network, remarks..."
+            class="flex-1 min-w-[220px] max-w-md px-3.5 py-2 bg-[#0b0f19] border border-[#1f2937] rounded-lg text-xs sm:text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500/60" />
+
+          <div class="flex items-center gap-2">
+            <button id="history-sos-btn" type="button" onclick="toggleHistorySos()" aria-pressed="false"
+              class="px-3.5 py-2 rounded-lg bg-[#0b0f19] border border-[#1f2937] text-xs sm:text-sm font-medium text-gray-300 hover:border-red-500/50 transition">
+              SOS Only
+            </button>
+            <button onclick="exportHistoryCsv()"
+              class="px-3.5 py-2 rounded-lg bg-[#0b0f19] hover:bg-[#1f2937] border border-[#1f2937] hover:border-gray-600 text-xs sm:text-sm font-medium text-emerald-400 transition">
+              Export CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Table Card -->
+      <div class="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden">
+        <!-- Table Meta & Rows Per Page -->
+        <div class="px-4 py-3 border-b border-[#1f2937] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <span id="history-count" class="font-medium text-gray-300">0 records</span>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-gray-400">
+              <span>Rows:</span>
+              <select id="history-page-size" onchange="changePageSize()"
+                class="px-2 py-1 bg-[#0b0f19] border border-[#1f2937] rounded-md text-gray-200 font-mono focus:outline-none">
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <span id="history-page-label" class="font-mono text-gray-400">Page 1 of 1</span>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-[#0b0f19]/80 border-b border-[#1f2937] text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <th class="py-3 px-4">User &amp; Device</th>
+                <th class="py-3 px-4">Battery</th>
+                <th class="py-3 px-4">Signal &amp; Network</th>
+                <th class="py-3 px-4">Status / SOS</th>
+                <th class="py-3 px-4">Location</th>
+                <th class="py-3 px-4">Logged At</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-[#1f2937]/80 text-sm"></tbody>
+          </table>
+        </div>
+
+        <!-- Loading & Empty States -->
+        <div id="history-loading" class="hidden py-12 text-center">
+          <div class="w-7 h-7 mx-auto rounded-full border-2 border-gray-700 border-t-cyan-400 animate-spin mb-2.5"></div>
+          <p class="text-xs text-gray-400">Fetching history...</p>
+        </div>
+        <div id="history-empty" class="hidden py-12 text-center">
+          <p class="text-sm font-medium text-gray-300">No telemetry records found</p>
+        </div>
+
+        <!-- Client-Side Pagination Footer -->
+        <div class="px-4 py-3 border-t border-[#1f2937] bg-[#0b0f19]/50 flex items-center justify-between gap-3">
+          <span id="history-range" class="text-xs font-mono text-gray-400">0 - 0 of 0</span>
+          <div class="flex items-center gap-2">
+            <button id="history-prev" onclick="stepPage(-1)" disabled
+              class="px-3 py-1.5 rounded-lg bg-[#111827] hover:bg-[#1f2937] border border-[#1f2937] text-xs font-medium text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition">
+              Previous
+            </button>
+            <button id="history-next" onclick="stepPage(1)" disabled
+              class="px-3 py-1.5 rounded-lg bg-[#111827] hover:bg-[#1f2937] border border-[#1f2937] text-xs font-medium text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== RIGHT-SIDE DETAIL DRAWER ==================== -->
+  <div id="drawer-backdrop" onclick="closeDrawer()"
+    class="fixed inset-0 z-40 bg-black/65 opacity-0 pointer-events-none transition-opacity duration-200"></div>
+
+  <aside id="detail-drawer" aria-label="Telemetry Record Details"
+    class="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-[#111827] border-l border-[#1f2937] shadow-2xl transform translate-x-full transition-transform duration-200 flex flex-col">
+    <div class="px-5 py-4 border-b border-[#1f2937] bg-[#0b0f19]/70 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <h3 id="drawer-user" class="text-base font-semibold text-white truncate"></h3>
+          <span id="drawer-id" class="text-xs font-mono text-gray-400"></span>
+        </div>
+        <p id="drawer-device" class="text-xs text-gray-400 truncate mt-0.5"></p>
+      </div>
+      <button onclick="closeDrawer()" aria-label="Close details"
+        class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2937] transition">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div id="drawer-body" class="flex-1 overflow-y-auto p-5 space-y-4"></div>
+  </aside>
+
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div id="toast-box" class="fixed bottom-5 right-5 z-50 pointer-events-none flex flex-col gap-2"></div>
+
+  <!-- ==================== APPLICATION LOGIC ==================== -->
+  <script>
+    const domain = ""; // Set e.g. "https://example.com" or leave empty for same-origin Django template
+    const API_URLS = {
+      latest: domain + "/appg/telemetry/api/latest/",
+      familyTracker: domain + "/appg/telemetry/api/family-tracker/",
+      history: domain + "/appg/telemetry/api/"
+    };
+
+    // ==================== STATE ====================
+    let activeTab = 'latest';
+
+    // Tab 1: Latest 20
+    let latestAll = [];
+    let latestView = [];
+    let latestSosOnly = false;
+
+    // Tab 2: Family Tracker (7d)
+    let trackerRecords = [];
+    let trackerLoaded = false;
+    let selectedUser = null;
+    let map = null;
+    let markerLayer = null;
+    let markersByUser = {};
+
+    // Tab 3: History (Client-side Pagination)
+    let historyAll = [];
+    let historyFiltered = [];
+    let historyLoaded = false;
+    let historySosOnly = false;
+    let pageSize = 25;
+    let currentPage = 1;
+
+    // ==================== FETCH & UTILITIES ====================
+    async function fetchList(url) {
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.results)) return data.results;
+      return [];
+    }
+
+    function esc(v) {
+      if (v === null || v === undefined) return '';
+      return String(v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function hasGps(r) {
+      return r && r.latitude !== null && r.latitude !== undefined && r.latitude !== '' &&
+        r.longitude !== null && r.longitude !== undefined && r.longitude !== '' &&
+        Number.isFinite(Number(r.latitude)) && Number.isFinite(Number(r.longitude));
+    }
+
+    function mapsUrl(lat, lng) {
+      return `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+    }
+
+    function fmtDateInput(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function fmtDateTime(iso, withSeconds = false) {
+      if (!iso) return '--';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString(undefined, {
+        year: withSeconds ? 'numeric' : undefined,
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: withSeconds ? '2-digit' : undefined,
+        hour12: true,
+      });
+    }
+
+    function fmtRelative(iso) {
+      if (!iso) return '--';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '--';
+      const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+      if (sec < 60) return `${sec}s ago`;
+      const min = Math.floor(sec / 60);
+      if (min < 60) return `${min}m ago`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h ago`;
+      return `${Math.floor(hr / 24)}d ago`;
+    }
+
+    function fmtUptime(ms) {
+      if (ms === null || ms === undefined || isNaN(Number(ms))) return 'N/A';
+      const totalMin = Math.floor(Math.max(0, Number(ms)) / 60000);
+      const days = Math.floor(totalMin / 1440);
+      const hours = Math.floor((totalMin % 1440) / 60);
+      const mins = totalMin % 60;
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours || days) parts.push(`${hours}h`);
+      parts.push(`${mins}m`);
+      return parts.join(' ');
+    }
+
+    function matchesFilters(r, query, sosOnly) {
+      if (sosOnly && !r.sos_flag) return false;
+      if (!query) return true;
+      const text = [r.username, r.device_model, r.network_type, r.Remarks]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return text.includes(query);
+    }
+
+    function setToggleStyle(btnId, active) {
+      const btn = document.getElementById(btnId);
+      btn.setAttribute('aria-pressed', String(active));
+      btn.className = active
+        ? 'px-3.5 py-2 rounded-lg bg-red-500/15 border border-red-500/50 text-xs sm:text-sm font-medium text-red-300 transition'
+        : 'px-3.5 py-2 rounded-lg bg-[#0b0f19] border border-[#1f2937] text-xs sm:text-sm font-medium text-gray-300 hover:border-red-500/50 transition';
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      const el = document.createElement('div');
+      el.className = 'px-4 py-2.5 rounded-lg bg-[#111827] border border-[#1f2937] text-xs font-medium text-gray-200 shadow-lg';
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 2200);
+    }
+
+    // ==================== SHARED TABLE CELLS ====================
+    function batteryHtml(level, charging) {
+      if (level === null || level === undefined || isNaN(Number(level))) {
+        return '<span class="text-xs font-mono text-gray-500">N/A</span>';
+      }
+      const pct = Math.max(0, Math.min(100, Number(level)));
+      const bar = pct <= 20 ? 'bg-red-500' : pct <= 45 ? 'bg-amber-400' : 'bg-emerald-500';
+      const txt = pct <= 20 ? 'text-red-400' : pct <= 45 ? 'text-amber-300' : 'text-emerald-400';
+      const bolt = charging ? '<span class="text-amber-400 text-xs" title="Charging">&#9889;</span>' : '';
+      return `
+        <div class="min-w-[84px]">
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="text-xs font-mono font-semibold ${txt}">${pct}%</span>
+            ${bolt}
+          </div>
+          <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div class="h-full ${bar} rounded-full" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    }
+
+    function signalHtml(network, strength) {
+      const net = network ? esc(network) : 'Unknown';
+      const sig = (strength !== null && strength !== undefined && strength !== '')
+        ? `${esc(strength)} dBm`
+        : 'N/A';
+      return `
+        <div class="whitespace-nowrap">
+          <div class="text-xs font-medium text-gray-200">${net}</div>
+          <div class="text-[11px] font-mono text-gray-500">${sig}</div>
+        </div>`;
+    }
+
+    function statusHtml(r) {
+      const badge = r.sos_flag
+        ? '<span class="sos-pulse inline-block px-2 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400 text-[11px] font-semibold">SOS</span>'
+        : '<span class="inline-block px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-medium">Normal</span>';
+      const remarks = r.Remarks
+        ? `<div class="text-xs text-gray-400 truncate max-w-[200px] mt-1" title="${esc(r.Remarks)}">${esc(r.Remarks)}</div>`
+        : '';
+      return `
+        <div class="min-w-[130px]">
+          <div class="flex items-center gap-2 whitespace-nowrap">
+            ${badge}
+            <span class="text-[11px] font-mono text-gray-500">S:${esc(r.status ?? '-')}</span>
+          </div>
+          ${remarks}
+        </div>`;
+    }
+
+    function locationHtml(r) {
+      if (!hasGps(r)) {
+        return '<span class="inline-block px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-[11px] text-gray-400">No GPS</span>';
+      }
+      const lat = Number(r.latitude).toFixed(5);
+      const lng = Number(r.longitude).toFixed(5);
+      return `
+        <div class="flex flex-wrap items-center gap-2 whitespace-nowrap">
+          <span class="text-xs font-mono text-gray-300">${lat}, ${lng}</span>
+          <a href="${mapsUrl(r.latitude, r.longitude)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"
+            class="px-2.5 py-1 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium transition">
+            Google Maps
+          </a>
+        </div>`;
+    }
+
+    function rowHtml(r, idx, source) {
+      const bg = r.sos_flag ? 'bg-red-950/20 hover:bg-red-950/30' : 'hover:bg-[#1a2234]';
+      return `
+        <tr onclick="openRowDetail('${source}', ${idx})" class="${bg} cursor-pointer transition-colors">
+          <td class="py-3 px-4">
+            <div class="text-sm font-medium text-white">${esc(r.username || 'Unknown')}</div>
+            <div class="text-xs text-gray-400">${esc(r.device_model || 'Unknown Device')}</div>
+          </td>
+          <td class="py-3 px-4">${batteryHtml(r.battery_level, r.is_charging)}</td>
+          <td class="py-3 px-4">${signalHtml(r.network_type, r.signal_strength)}</td>
+          <td class="py-3 px-4">${statusHtml(r)}</td>
+          <td class="py-3 px-4">${locationHtml(r)}</td>
+          <td class="py-3 px-4 whitespace-nowrap text-xs font-mono text-gray-300">${fmtDateTime(r.logged_at)}</td>
+        </tr>`;
+    }
+
+    // ==================== TAB NAVIGATION ====================
+    function switchTab(tab) {
+      activeTab = tab;
+      ['latest', 'tracker', 'history'].forEach((t) => {
+        const active = t === tab;
+        document.getElementById(`view-${t}`).classList.toggle('hidden', !active);
+        const btn = document.getElementById(`tab-${t}`);
+        btn.className = active
+          ? 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+          : 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap text-gray-400 hover:text-gray-100 border border-transparent';
+      });
+
+      if (tab === 'tracker') {
+        initMap();
+        if (!trackerLoaded) loadTracker();
+        setTimeout(() => map && map.invalidateSize(), 100);
+      } else if (tab === 'history' && !historyLoaded) {
+        loadHistory();
+      }
+    }
+
+    async function refreshCurrentTab() {
+      const icon = document.getElementById('refresh-spinner');
+      icon.classList.add('animate-spin');
+      try {
+        if (activeTab === 'latest') await loadLatest();
+        else if (activeTab === 'tracker') await loadTracker();
+        else await loadHistory();
+      } finally {
+        setTimeout(() => icon.classList.remove('animate-spin'), 300);
+      }
+    }
+
+    // ==================== TAB 1: LATEST 20 ====================
+    async function loadLatest() {
+      const errBox = document.getElementById('latest-error');
+      const loading = document.getElementById('latest-loading');
+      const empty = document.getElementById('latest-empty');
+      const tbody = document.getElementById('latest-tbody');
+
+      errBox.classList.add('hidden');
+      empty.classList.add('hidden');
+      tbody.innerHTML = '';
+      loading.classList.remove('hidden');
+
+      try {
+        latestAll = await fetchList(API_URLS.latest);
+      } catch (err) {
+        latestAll = [];
+        document.getElementById('latest-error-msg').textContent = `Unable to load latest records (${err.message}).`;
+        errBox.classList.remove('hidden');
+      } finally {
+        loading.classList.add('hidden');
+        renderLatest();
+      }
+    }
+
+    function toggleLatestSos() {
+      latestSosOnly = !latestSosOnly;
+      setToggleStyle('latest-sos-btn', latestSosOnly);
+      renderLatest();
+    }
+
+    function renderLatest() {
+      // KPIs based on loaded dataset
+      const sosCount = latestAll.filter((r) => r.sos_flag === true).length;
+      const uniqueUsers = new Set(latestAll.map((r) => r.username).filter(Boolean)).size;
+
+      document.getElementById('kpi-total').textContent = latestAll.length;
+      document.getElementById('kpi-users').textContent = uniqueUsers;
+
+      const sosEl = document.getElementById('kpi-sos');
+      const sosCard = document.getElementById('kpi-sos-card');
+      sosEl.textContent = sosCount;
+      if (sosCount > 0) {
+        sosEl.className = 'mt-2 text-2xl sm:text-3xl font-bold font-mono text-red-400';
+        sosCard.className = 'bg-red-950/25 border border-red-500/50 rounded-xl p-4 sm:p-5 transition-colors';
+      } else {
+        sosEl.className = 'mt-2 text-2xl sm:text-3xl font-bold font-mono text-white';
+        sosCard.className = 'bg-[#111827] border border-[#1f2937] rounded-xl p-4 sm:p-5 transition-colors';
+      }
+
+      const q = document.getElementById('latest-search').value.trim().toLowerCase();
+      latestView = latestAll.filter((r) => matchesFilters(r, q, latestSosOnly));
+
+      const tbody = document.getElementById('latest-tbody');
+      const empty = document.getElementById('latest-empty');
+      if (!latestView.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      tbody.innerHTML = latestView.map((r, i) => rowHtml(r, i, 'latest')).join('');
+    }
+
+    // ==================== TAB 2: FAMILY TRACKER (7d) ====================
+    function initMap() {
+      if (map) return;
+      map = L.map('tracker-map', { center: [20.5937, 78.9629], zoom: 5 });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+    }
+
+    async function loadTracker() {
+      initMap();
+      const errBox = document.getElementById('tracker-error');
+      const loading = document.getElementById('tracker-loading');
+      errBox.classList.add('hidden');
+      loading.classList.remove('hidden');
+
+      try {
+        const rows = await fetchList(API_URLS.familyTracker);
+        trackerRecords = rows.filter(hasGps);
+        trackerLoaded = true;
+      } catch (err) {
+        trackerRecords = [];
+        document.getElementById('tracker-error-msg').textContent = `Unable to load family tracker (${err.message}).`;
+        errBox.classList.remove('hidden');
+      } finally {
+        loading.classList.add('hidden');
+        renderTracker(true);
+      }
+    }
+
+    function createUserMarkerIcon(username, isSos) {
+      const initials = esc((username || '?').slice(0, 2).toUpperCase());
+      const color = isSos ? '#ef4444' : '#06b6d4';
+      const ping = isSos
+        ? `<span class="radar-ping absolute inset-0 rounded-full" style="background:${color};"></span>`
+        : '';
+      return L.divIcon({
+        className: 'custom-pin',
+        html: `
+          <div class="relative flex items-center justify-center w-9 h-9 -ml-4 -mt-4">
+            ${ping}
+            <div class="relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 shadow-lg"
+              style="background:#0b0f19;border-color:${color};box-shadow:0 0 12px ${color}66;">
+              ${initials}
+            </div>
+          </div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -20],
+      });
+    }
+
+    function renderTracker(fitBounds = false) {
+      initMap();
+      markerLayer.clearLayers();
+      markersByUser = {};
+
+      const cardsEl = document.getElementById('tracker-cards');
+      const emptyOverlay = document.getElementById('tracker-map-empty');
+
+      if (!trackerRecords.length) {
+        emptyOverlay.classList.remove('hidden');
+        cardsEl.innerHTML = `
+          <div class="bg-[#111827] border border-[#1f2937] rounded-xl p-6 text-center">
+            <p class="text-sm font-medium text-gray-300">No telemetry records found</p>
+          </div>`;
+        return;
+      }
+
+      emptyOverlay.classList.add('hidden');
+      const bounds = [];
+
+      cardsEl.innerHTML = trackerRecords.map((r) => {
+        const user = r.username || 'Unknown';
+        const lat = Number(r.latitude);
+        const lng = Number(r.longitude);
+        const lastSeen = r.logged_at || r.timestamp;
+        const link = mapsUrl(lat, lng);
+        const isSelected = selectedUser === user;
+
+        bounds.push([lat, lng]);
+
+        const popupHtml = `
+          <div class="p-3.5 space-y-2">
+            <div class="flex items-center justify-between gap-2 pr-4">
+              <div>
+                <div class="text-sm font-semibold text-white">${esc(user)}</div>
+                <div class="text-[11px] text-gray-400">${esc(r.device_model || 'Unknown Device')}</div>
+              </div>
+              ${r.sos_flag ? '<span class="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400 text-[10px] font-bold">SOS</span>' : ''}
+            </div>
+            <div class="text-xs text-gray-300 flex items-center justify-between bg-[#0b0f19] px-2.5 py-1.5 rounded-lg border border-[#1f2937]">
+              <span>Battery: <strong class="font-mono">${r.battery_level ?? 'N/A'}%</strong>${r.is_charging ? ' &#9889;' : ''}</span>
+              <span>${esc(r.network_type || 'N/A')}</span>
+            </div>
+            ${r.Remarks ? `<div class="text-[11px] text-gray-400">${esc(r.Remarks)}</div>` : ''}
+            <div class="text-[11px] font-mono text-gray-500">${fmtDateTime(lastSeen, true)}</div>
+            <a href="${link}" target="_blank" rel="noopener noreferrer"
+              class="block w-full text-center py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition">
+              Google Maps
+            </a>
+          </div>`;
+
+        const marker = L.marker([lat, lng], { icon: createUserMarkerIcon(user, !!r.sos_flag) })
+          .bindPopup(popupHtml)
+          .addTo(markerLayer);
+
+        markersByUser[user] = { marker, lat, lng };
+
+        const cardBorder = isSelected
+          ? 'border-cyan-500/60 bg-[#161f33]'
+          : 'border-[#1f2937] bg-[#111827] hover:border-gray-600';
+
+        return `
+          <div onclick="focusTrackerUser('${esc(user)}')" class="rounded-xl border p-4 cursor-pointer transition ${cardBorder}">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-white truncate">${esc(user)}</span>
+                  ${r.sos_flag ? '<span class="sos-pulse px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-red-400 text-[10px] font-bold">SOS</span>' : ''}
+                </div>
+                <p class="text-xs text-gray-400 truncate mt-0.5">${esc(r.device_model || 'Unknown Device')}</p>
+              </div>
+              <span class="text-[11px] font-mono text-gray-400 shrink-0">${fmtRelative(lastSeen)}</span>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-[#1f2937] flex items-center justify-between gap-3">
+              ${batteryHtml(r.battery_level, r.is_charging)}
+              <a href="${link}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"
+                class="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-medium shrink-0 transition">
+                Google Maps
+              </a>
+            </div>
+          </div>`;
+      }).join('');
+
+      if (fitBounds && bounds.length) {
+        map.fitBounds(L.latLngBounds(bounds), { padding: [45, 45], maxZoom: 14 });
+      }
+    }
+
+    function focusTrackerUser(user) {
+      selectedUser = user;
+      renderTracker(false);
+      const entry = markersByUser[user];
+      if (entry && map) {
+        map.flyTo([entry.lat, entry.lng], 14, { duration: 0.75 });
+        setTimeout(() => entry.marker.openPopup(), 350);
+      }
+    }
+
+    // ==================== TAB 3: HISTORY ====================
+    function applyPreset(key) {
+      const end = new Date();
+      const start = new Date();
+      if (key === '7d') start.setDate(end.getDate() - 7);
+      else if (key === '30d') start.setDate(end.getDate() - 30);
+
+      document.getElementById('history-start').value = fmtDateInput(start);
+      document.getElementById('history-end').value = fmtDateInput(end);
+
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        const active = btn.dataset.preset === key;
+        btn.className = active
+          ? 'preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 transition'
+          : 'preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0b0f19] border border-[#1f2937] text-gray-300 hover:border-cyan-500/50 transition';
+      });
+
+      loadHistory();
+    }
+
+    async function loadHistory() {
+      const errBox = document.getElementById('history-error');
+      const loading = document.getElementById('history-loading');
+      const empty = document.getElementById('history-empty');
+      const tbody = document.getElementById('history-tbody');
+
+      errBox.classList.add('hidden');
+      empty.classList.add('hidden');
+      tbody.innerHTML = '';
+      loading.classList.remove('hidden');
+
+      const start = document.getElementById('history-start').value;
+      const end = document.getElementById('history-end').value;
+      const params = new URLSearchParams();
+      if (start) params.set('start_date', start);
+      if (end) params.set('end_date', end);
+
+      const url = params.toString() ? `${API_URLS.history}?${params}` : API_URLS.history;
+
+      try {
+        historyAll = await fetchList(url);
+        historyLoaded = true;
+      } catch (err) {
+        historyAll = [];
+        document.getElementById('history-error-msg').textContent = `Unable to load history (${err.message}).`;
+        errBox.classList.remove('hidden');
+      } finally {
+        loading.classList.add('hidden');
+        currentPage = 1;
+        renderHistory();
+      }
+    }
+
+    function toggleHistorySos() {
+      historySosOnly = !historySosOnly;
+      setToggleStyle('history-sos-btn', historySosOnly);
+      currentPage = 1;
+      renderHistory();
+    }
+
+    function changePageSize() {
+      pageSize = Number(document.getElementById('history-page-size').value) || 25;
+      currentPage = 1;
+      renderHistory();
+    }
+
+    function stepPage(delta) {
+      const totalPages = Math.max(1, Math.ceil(historyFiltered.length / pageSize));
+      const next = currentPage + delta;
+      if (next < 1 || next > totalPages) return;
+      currentPage = next;
+      renderHistory();
+    }
+
+    function getHistoryPageRows() {
+      const start = (currentPage - 1) * pageSize;
+      return historyFiltered.slice(start, start + pageSize);
+    }
+
+    function renderHistory() {
+      const q = document.getElementById('history-search').value.trim().toLowerCase();
+      historyFiltered = historyAll.filter((r) => matchesFilters(r, q, historySosOnly));
+
+      const total = historyFiltered.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIdx = (currentPage - 1) * pageSize;
+      const pageRows = historyFiltered.slice(startIdx, startIdx + pageSize);
+
+      document.getElementById('history-count').textContent = `${total.toLocaleString()} ${total === 1 ? 'record' : 'records'}`;
+      document.getElementById('history-page-label').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('history-range').textContent = total
+        ? `${startIdx + 1} - ${startIdx + pageRows.length} of ${total}`
+        : '0 - 0 of 0';
+
+      document.getElementById('history-prev').disabled = currentPage <= 1;
+      document.getElementById('history-next').disabled = currentPage >= totalPages;
+
+      const tbody = document.getElementById('history-tbody');
+      const empty = document.getElementById('history-empty');
+      if (!pageRows.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      tbody.innerHTML = pageRows.map((r, i) => rowHtml(r, i, 'history')).join('');
+    }
+
+    function exportHistoryCsv() {
+      if (!historyFiltered.length) {
+        showToast('No records to export');
+        return;
+      }
+      const cols = [
+        'id', 'username', 'device_model', 'latitude', 'longitude', 'is_charging',
+        'battery_level', 'signal_strength', 'network_type', 'os_version', 'locale',
+        'uptime_ms', 'screen_brightness', 'sos_flag', 'Remarks', 'status', 'timestamp', 'logged_at'
+      ];
+      const csvCell = (val) => {
+        if (val === null || val === undefined) return '';
+        const s = String(val);
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const csv = [cols.join(','), ...historyFiltered.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `telemetry_${fmtDateInput(new Date())}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Exported ${historyFiltered.length} records`);
+    }
+
+    // ==================== DETAIL DRAWER (ALL 18 FIELDS) ====================
+    function openRowDetail(source, idx) {
+      const list = source === 'latest' ? latestView : getHistoryPageRows();
+      const r = list[idx];
+      if (!r) return;
+
+      document.getElementById('drawer-user').textContent = r.username || 'Unknown';
+      document.getElementById('drawer-id').textContent = r.id !== undefined && r.id !== null ? `#${r.id}` : '';
+      document.getElementById('drawer-device').textContent = r.device_model || 'Unknown Device';
+
+      const gps = hasGps(r);
+      const mapBtn = gps
+        ? `<a href="${mapsUrl(r.latitude, r.longitude)}" target="_blank" rel="noopener noreferrer"
+            class="block w-full text-center py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs sm:text-sm font-medium transition">
+            Open in Google Maps
+          </a>`
+        : `<div class="w-full text-center py-2.5 rounded-lg bg-gray-800/70 border border-gray-700 text-xs text-gray-400">No GPS Coordinates</div>`;
+
+      const fields = [
+        ['id', r.id ?? 'null'],
+        ['username', r.username ?? 'null'],
+        ['device_model', r.device_model ?? 'null'],
+        ['latitude', gps ? Number(r.latitude).toFixed(6) : 'null'],
+        ['longitude', gps ? Number(r.longitude).toFixed(6) : 'null'],
+        ['is_charging', String(Boolean(r.is_charging))],
+        ['battery_level', r.battery_level !== null && r.battery_level !== undefined ? `${r.battery_level}%` : 'null'],
+        ['signal_strength', r.signal_strength !== null && r.signal_strength !== undefined ? `${r.signal_strength} dBm` : 'null'],
+        ['network_type', r.network_type ?? 'null'],
+        ['os_version', r.os_version ?? 'null'],
+        ['locale', r.locale ?? 'null'],
+        ['uptime_ms', r.uptime_ms !== null && r.uptime_ms !== undefined ? `${fmtUptime(r.uptime_ms)} (${Number(r.uptime_ms).toLocaleString()} ms)` : 'null'],
+        ['screen_brightness', r.screen_brightness ?? 'null'],
+        ['sos_flag', String(Boolean(r.sos_flag))],
+        ['Remarks', r.Remarks ?? 'null'],
+        ['status', r.status ?? 'null'],
+        ['timestamp', fmtDateTime(r.timestamp, true)],
+        ['logged_at', fmtDateTime(r.logged_at, true)],
+      ];
+
+      document.getElementById('drawer-body').innerHTML = `
+        ${mapBtn}
+        <div class="rounded-xl bg-[#0b0f19] border border-[#1f2937] divide-y divide-[#1f2937]/70 px-3.5">
+          ${fields.map(([k, v]) => `
+            <div class="py-2.5 flex items-start justify-between gap-4">
+              <span class="text-xs text-gray-400 shrink-0">${esc(k)}</span>
+              <span class="text-xs font-mono text-gray-100 text-right break-all">${esc(v)}</span>
+            </div>`).join('')}
+        </div>`;
+
+      const backdrop = document.getElementById('drawer-backdrop');
+      backdrop.classList.remove('opacity-0', 'pointer-events-none');
+      backdrop.classList.add('opacity-100');
+      document.getElementById('detail-drawer').classList.remove('translate-x-full');
+    }
+
+    function closeDrawer() {
+      const backdrop = document.getElementById('drawer-backdrop');
+      backdrop.classList.add('opacity-0', 'pointer-events-none');
+      backdrop.classList.remove('opacity-100');
+      document.getElementById('detail-drawer').classList.add('translate-x-full');
+    }
+
+    // ==================== INIT ====================
+    document.addEventListener('DOMContentLoaded', () => {
+      // Live filter bindings
+      document.getElementById('latest-search').addEventListener('input', renderLatest);
+      document.getElementById('history-search').addEventListener('input', () => {
+        currentPage = 1;
+        renderHistory();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+      window.addEventListener('resize', () => { if (map && activeTab === 'tracker') map.invalidateSize(); });
+
+      // Default History dates to Last 7 Days
+      const today = new Date();
+      const weekAgo = new Date();
+      weekAgo.setDate(today.getDate() - 7);
+      document.getElementById('history-start').value = fmtDateInput(weekAgo);
+      document.getElementById('history-end').value = fmtDateInput(today);
+      document.querySelector('[data-preset="7d"]').className =
+        'preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 transition';
+
+      // Start on Latest 20
+      switchTab('latest');
+      loadLatest();
+    });
+  </script>
+</body>
+</html>

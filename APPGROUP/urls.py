@@ -28,4 +28,5 @@ urlpatterns = [
     path('home-auto-action/', trigger_home_auto_action),
     path('location-homepage', location_log_dashboard),
     path('telemetry/', include(telemetry_router.urls)),
+    path('telemetry-dashboard', telemetry_dashboard),
 ]

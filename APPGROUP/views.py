@@ -167,9 +167,6 @@ def location_log_dashboard(request):
     usernames = user_from_func['usernames']
     print(user , list(usernames))
 
-
-
-
     locations = LocationLog.objects.filter(
         user__in=usernames
     ).exclude(
@@ -190,6 +187,51 @@ def jarvis(request):
     return render(request, "Jarvis.html")
 
 
+from datetime import timedelta
+from django.db.models import Max
+from django.shortcuts import render
+from django.utils import timezone
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import DeviceTelemetry
+from .serializers import DeviceTelemetrySerializer
+
+
+def telemetry_dashboard(request):
+    return render(request, 'APPG_Telemetry_dashboard.html')
+
+
 class DeviceTelemetryViewSet(viewsets.ModelViewSet):
-    queryset = DeviceTelemetry.objects.all().order_by('-logged_at')
     serializer_class = DeviceTelemetrySerializer
+
+    # 1. All data between start_date and end_date
+    def get_queryset(self):
+        qs = DeviceTelemetry.objects.order_by('-logged_at')
+        start = self.request.query_params.get('start_date')
+        end = self.request.query_params.get('end_date')
+        if start:
+            qs = qs.filter(logged_at__date__gte=start)
+        if end:
+            qs = qs.filter(logged_at__date__lte=end)
+        return qs
+
+    # 2. Latest 20 records (SQL LIMIT 20)
+    @action(detail=False, methods=['get'], url_path='latest')
+    def latest(self, request):
+        qs = DeviceTelemetry.objects.order_by('-logged_at')[:20]
+        return Response(self.get_serializer(qs, many=True).data)
+
+    # 3. Last 7 days latest GPS location per user
+    @action(detail=False, methods=['get'], url_path='family-tracker')
+    def family_tracker(self, request):
+        cutoff = timezone.now() - timedelta(days=7)
+        latest_ids = (
+            DeviceTelemetry.objects
+            .filter(logged_at__gte=cutoff, latitude__isnull=False, longitude__isnull=False)
+            .values('username')
+            .annotate(latest_id=Max('id'))
+            .values_list('latest_id', flat=True)
+        )
+        qs = DeviceTelemetry.objects.filter(id__in=list(latest_ids)).order_by('-logged_at')
+        return Response(self.get_serializer(qs, many=True).data)
